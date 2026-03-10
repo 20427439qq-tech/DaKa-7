@@ -44,8 +44,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (password === correctPassword) {
         // If trying to enter as admin, check if they have the role
-        // 'admin' in login UI corresponds to 'jiwei' or 'admin' in roles array
-        if (selectedRole === 'admin' && !existingUser.roles.includes('admin') && !existingUser.roles.includes('jiwei')) {
+        if (selectedRole === 'admin' && existingUser.role !== 'admin') {
           return { success: false, message: '您没有纪委权限' };
         }
 

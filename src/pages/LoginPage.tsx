@@ -125,6 +125,11 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
+        <div className="mt-8 pt-6 border-t border-gray-50 text-center">
+          <p className="text-xs text-gray-400">
+            默认密码：2026 {role === 'admin' ? '(纪委: 20262026)' : ''}
+          </p>
+        </div>
       </motion.div>
     </div>
   );

@@ -24,16 +24,16 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated) {
     return <LoginPage />;
   }
 
-  // Admin/Jiwei routing
-  if (user?.roles.includes('admin') || user?.roles.includes('jiwei')) {
+  // Admin routing
+  if (user?.role === 'admin') {
     if (hash === '#dashboard') {
       return <DashboardPage />;
     }
-    if (hash === '#admin' && user?.roles.includes('admin')) {
+    if (hash === '#admin') {
       return <AdminPage />;
     }
     if (hash === '#history') {
@@ -45,8 +45,7 @@ function AppContent() {
     if (hash === '') {
       return <MyCheckinPage />;
     }
-    // Default for privileged users
-    return user?.roles.includes('admin') ? <AdminPage /> : <DashboardPage />;
+    return <AdminPage />;
   }
 
   // Member routing

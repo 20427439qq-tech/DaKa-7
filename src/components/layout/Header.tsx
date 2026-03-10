@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
           </div>
           
           <div className="flex items-center gap-4">
-            {(user.roles.includes('admin') || user.roles.includes('jiwei')) && (
+            {user.role === 'admin' && (
               <nav className="hidden md:flex items-center gap-1 mr-4 border-r border-gray-100 pr-4">
                 <a 
                   href="#" 
@@ -58,9 +58,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
             )}
             <div className="flex flex-col items-end mr-2">
               <span className="text-sm font-medium text-gray-900">{user.name}</span>
-              <span className="text-xs text-gray-500">
-                {user.roles.includes('admin') ? '管理员' : user.roles.includes('jiwei') ? '纪委' : '成员'}
-              </span>
+              <span className="text-xs text-gray-500">{user.role === 'admin' ? '管理者' : '团队成员'}</span>
             </div>
             <button 
               onClick={onLogout}

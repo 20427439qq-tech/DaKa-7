@@ -53,7 +53,7 @@ export const MyCheckinPage: React.FC = () => {
 
   const teammates = useMemo(() => {
     return users
-      .filter(u => u.roles.includes('member') && u.id !== user?.id)
+      .filter(u => u.role === 'member' && u.id !== user?.id)
       .sort((a, b) => (a.studentId || 0) - (b.studentId || 0));
   }, [user, users]);
 
