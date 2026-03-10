@@ -24,7 +24,7 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <LoginPage />;
   }
 
