@@ -17,7 +17,7 @@ export const TeammateStatus: React.FC<TeammateStatusProps> = ({ teammates, check
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-black text-gray-900 flex items-center gap-2">
           <Icons.Users size={16} className="text-blue-500" />
-          队友打卡状态
+          自在队 队员打卡状态
         </h3>
         <span className="text-[10px] text-gray-400 font-bold">点击查看详情</span>
       </div>
