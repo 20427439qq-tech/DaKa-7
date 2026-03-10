@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { Icons } from '../lib/utils';
-import { UserRole } from '../types';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<UserRole>('member');
+  const [role, setRole] = useState<'member' | 'admin'>('member');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -24,8 +23,8 @@ export const LoginPage: React.FC = () => {
     }
     const result = login(name, password, role);
     if (result.success) {
-      // If logged in as admin or discipline mode, go to dashboard
-      if (role === 'admin' || role === 'discipline') {
+      // If logged in as admin mode, go to dashboard
+      if (role === 'admin') {
         window.location.hash = '#dashboard';
       } else {
         window.location.hash = '';
@@ -90,11 +89,11 @@ export const LoginPage: React.FC = () => {
 
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">选择身份</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => setRole('member')}
-                className={`py-3 rounded-xl border-2 font-bold transition-all text-xs ${
+                className={`py-3 rounded-xl border-2 font-bold transition-all ${
                   role === 'member' 
                     ? 'bg-emerald-50 border-emerald-500 text-emerald-700' 
                     : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
@@ -104,25 +103,14 @@ export const LoginPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setRole('discipline')}
-                className={`py-3 rounded-xl border-2 font-bold transition-all text-xs ${
-                  role === 'discipline' 
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-700' 
-                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                }`}
-              >
-                纪委进入
-              </button>
-              <button
-                type="button"
                 onClick={() => setRole('admin')}
-                className={`py-3 rounded-xl border-2 font-bold transition-all text-xs ${
+                className={`py-3 rounded-xl border-2 font-bold transition-all ${
                   role === 'admin' 
                     ? 'bg-emerald-50 border-emerald-500 text-emerald-700' 
                     : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
                 }`}
               >
-                管理员
+                纪委进入
               </button>
             </div>
           </div>
@@ -137,11 +125,6 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-50 text-center">
-          <p className="text-xs text-gray-400">
-            默认密码：2026 {role === 'admin' ? '(管理员: 20262026)' : ''}
-          </p>
-        </div>
       </motion.div>
     </div>
   );
