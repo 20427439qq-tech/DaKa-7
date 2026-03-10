@@ -3,21 +3,24 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { Header } from '../components/layout/Header';
 import { Icons } from '../lib/utils';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 
 export const AdminPage: React.FC = () => {
   const { user, users, logout, addUser, updateUser, deleteUser, resetPassword } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({ name: '', role: 'member' as 'admin' | 'member', studentId: '' });
+  const [formData, setFormData] = useState({ name: '', roles: ['member'] as UserRole[], studentId: '' });
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredUsers = users
-    .filter(u => 
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.studentId?.toString() || '').includes(searchQuery)
-    )
+    .filter(u => {
+      const roles = u.roles || [];
+      const roleNames = roles.map(r => r === 'admin' ? '管理员' : r === 'jiwei' ? '纪委' : '成员');
+      return u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        roles.some(r => r.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        roleNames.some(rn => rn.includes(searchQuery)) ||
+        (u.studentId?.toString() || '').includes(searchQuery);
+    })
     .sort((a, b) => (a.studentId || 0) - (b.studentId || 0));
 
   const handleAddUser = (e: React.FormEvent) => {
@@ -25,12 +28,12 @@ export const AdminPage: React.FC = () => {
     if (!formData.name.trim()) return;
     addUser({ 
       name: formData.name, 
-      role: formData.role, 
+      roles: formData.roles, 
       password: '2026',
       studentId: formData.studentId ? parseInt(formData.studentId) : undefined
     });
     setIsAddModalOpen(false);
-    setFormData({ name: '', role: 'member', studentId: '' });
+    setFormData({ name: '', roles: ['member'], studentId: '' });
   };
 
   const handleUpdateUser = (e: React.FormEvent) => {
@@ -38,16 +41,28 @@ export const AdminPage: React.FC = () => {
     if (!editingUser || !formData.name.trim()) return;
     updateUser(editingUser.id, { 
       name: formData.name, 
-      role: formData.role,
+      roles: formData.roles,
       studentId: formData.studentId ? parseInt(formData.studentId) : undefined
     });
     setEditingUser(null);
-    setFormData({ name: '', role: 'member', studentId: '' });
+    setFormData({ name: '', roles: ['member'], studentId: '' });
   };
 
   const openEditModal = (u: User) => {
     setEditingUser(u);
-    setFormData({ name: u.name, role: u.role, studentId: u.studentId?.toString() || '' });
+    setFormData({ name: u.name, roles: u.roles, studentId: u.studentId?.toString() || '' });
+  };
+
+  const toggleRole = (role: UserRole) => {
+    setFormData(prev => {
+      const roles = prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role];
+      
+      // Ensure at least one role is selected, if not default to member
+      if (roles.length === 0) return { ...prev, roles: ['member'] };
+      return { ...prev, roles };
+    });
   };
 
   return (
@@ -121,8 +136,7 @@ export const AdminPage: React.FC = () => {
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">学号</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">成员信息</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">纪委权限</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">角色权限</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">权限角色</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">当前密码</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">操作</th>
                 </tr>
@@ -138,7 +152,7 @@ export const AdminPage: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
-                          u.role === 'admin' ? 'bg-indigo-500' : 'bg-emerald-500'
+                          (u.roles || []).includes('admin') ? 'bg-indigo-500' : 'bg-emerald-500'
                         }`}>
                           {u.name.charAt(0)}
                         </div>
@@ -149,33 +163,17 @@ export const AdminPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <button 
-                        onClick={() => {
-                          if (u.id === 'admin') return;
-                          const newRole = u.role === 'admin' ? 'member' : 'admin';
-                          updateUser(u.id, { role: newRole });
-                        }}
-                        disabled={u.id === 'admin'}
-                        className={`w-12 h-6 rounded-full p-1 transition-all duration-300 flex items-center ${
-                          u.role === 'admin' ? 'bg-emerald-500 justify-end shadow-[0_0_12px_rgba(16,185,129,0.4)]' : 'bg-gray-200 justify-start'
-                        } ${u.id === 'admin' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'}`}
-                        title={u.role === 'admin' ? '已点亮：拥有纪委权限' : '未点亮：普通成员'}
-                      >
-                        <motion.div 
-                          layout
-                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="w-4 h-4 bg-white rounded-full shadow-sm"
-                        />
-                      </button>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        u.role === 'admin' 
-                          ? 'bg-indigo-50 text-indigo-600' 
-                          : 'bg-emerald-50 text-emerald-600'
-                      }`}>
-                        {u.role === 'admin' ? '管理员' : '团队成员'}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {(u.roles || []).map(r => (
+                          <span key={r} className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            r === 'admin' ? 'bg-indigo-50 text-indigo-600' :
+                            r === 'jiwei' ? 'bg-amber-50 text-amber-600' :
+                            'bg-emerald-50 text-emerald-600'
+                          }`}>
+                            {r === 'admin' ? '管理员' : r === 'jiwei' ? '纪委' : '成员'}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-600">
@@ -290,15 +288,27 @@ export const AdminPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">角色</label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'member' })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-all appearance-none bg-white"
-                  >
-                    <option value="member">团队成员</option>
-                    <option value="admin">管理员</option>
-                  </select>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">角色权限 (多选)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'admin', label: '管理员' },
+                      { value: 'jiwei', label: '纪委' },
+                      { value: 'member', label: '成员' }
+                    ].map((r) => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        onClick={() => toggleRole(r.value as UserRole)}
+                        className={`py-2 rounded-xl border-2 text-xs font-bold transition-all ${
+                          formData.roles.includes(r.value as UserRole)
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
+                            : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 
                 <div className="pt-4">
@@ -308,11 +318,6 @@ export const AdminPage: React.FC = () => {
                   >
                     {editingUser ? '保存修改' : '确认新增'}
                   </button>
-                  {!editingUser && (
-                    <p className="text-center text-xs text-gray-400 mt-3">
-                      新账号默认密码为：2026
-                    </p>
-                  )}
                 </div>
               </form>
             </motion.div>

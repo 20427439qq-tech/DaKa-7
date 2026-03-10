@@ -6,7 +6,7 @@ import { MOCK_USERS } from '../data/mockData';
 interface AuthContextType {
   user: User | null;
   users: User[];
-  login: (name: string, password: string, role: 'admin' | 'member') => { success: boolean, message?: string };
+  login: (name: string, password: string, selectedRole: 'admin' | 'member') => { success: boolean, message?: string };
   logout: () => void;
   updatePassword: (newPassword: string) => void;
   addUser: (newUser: Omit<User, 'id'>) => void;
@@ -22,10 +22,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useLocalStorage<User | null>('auth_user', null);
   const [users, setUsers] = useLocalStorage<User[]>('team_users', MOCK_USERS);
 
-  // Version 1.0.0 cleanup: Clear old check-in data from local storage
+  // Migration for roles and version cleanup
   useEffect(() => {
-    const currentVersion = '1.0.0';
+    const currentVersion = '1.0.1';
     const savedVersion = window.localStorage.getItem('app_version');
+    
+    // Role migration logic
+    const migrateUser = (u: any): User => {
+      if (u.role && !u.roles) {
+        const { role, ...rest } = u;
+        return { ...rest, roles: [role] };
+      }
+      if (!u.roles) {
+        return { ...u, roles: ['member'] };
+      }
+      return u as User;
+    };
+
+    // Migrate users list
+    const migratedUsers = users.map(migrateUser);
+    const usersChanged = JSON.stringify(migratedUsers) !== JSON.stringify(users);
+    if (usersChanged) {
+      setUsers(migratedUsers);
+    }
+
+    // Migrate current user
+    if (user) {
+      const migratedUser = migrateUser(user);
+      if (JSON.stringify(migratedUser) !== JSON.stringify(user)) {
+        setUser(migratedUser);
+      }
+    }
+
     if (savedVersion !== currentVersion) {
       window.localStorage.removeItem('team_checkins');
       window.localStorage.setItem('app_version', currentVersion);
@@ -44,7 +72,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (password === correctPassword) {
         // If trying to enter as admin, check if they have the role
-        if (selectedRole === 'admin' && existingUser.role !== 'admin') {
+        // For login purpose, 'admin' role means they can access admin dashboard
+        // We check if they have 'admin' or 'jiwei' in their roles
+        const roles = existingUser.roles || [];
+        if (selectedRole === 'admin' && !roles.includes('admin') && !roles.includes('jiwei')) {
           return { success: false, message: '您没有纪委权限' };
         }
 

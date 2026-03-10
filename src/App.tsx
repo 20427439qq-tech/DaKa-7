@@ -29,7 +29,9 @@ function AppContent() {
   }
 
   // Admin routing
-  if (user?.role === 'admin') {
+  const userRoles = user?.roles || [];
+  const isAdmin = userRoles.includes('admin') || userRoles.includes('jiwei');
+  if (isAdmin) {
     if (hash === '#dashboard') {
       return <DashboardPage />;
     }

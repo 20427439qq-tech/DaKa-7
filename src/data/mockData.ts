@@ -1,19 +1,19 @@
 import { User, DailyCheckin, TaskConfig, TaskKey } from '../types';
 
 export const MOCK_USERS: User[] = [
-  { id: 'u1', name: '王凡', role: 'member', password: '2026', studentId: 1 },
-  { id: 'u2', name: '张亮', role: 'member', password: '2026', studentId: 2 },
-  { id: 'u3', name: '曹婷婷', role: 'member', password: '2026', studentId: 3 },
-  { id: 'u4', name: '吴琼瑛', role: 'member', password: '2026', studentId: 4 },
-  { id: 'u5', name: '周海鹏', role: 'member', password: '2026', studentId: 5 },
-  { id: 'u6', name: '尹连鹏', role: 'member', password: '2026', studentId: 6 },
-  { id: 'u7', name: '楼文妤', role: 'member', password: '2026', studentId: 7 },
-  { id: 'u8', name: '杨娟', role: 'member', password: '2026', studentId: 8 },
-  { id: 'u9', name: '王微微', role: 'member', password: '2026', studentId: 9 },
-  { id: 'u10', name: '罗慧', role: 'member', password: '2026', studentId: 10 },
-  { id: 'u11', name: '谢恩治', role: 'member', password: '2026', studentId: 11 },
-  { id: 'u12', name: '王小龙', role: 'member', password: '2026', studentId: 12 },
-  { id: 'admin', name: '管理员', role: 'admin', password: '20262026', studentId: 0 },
+  { id: 'u1', name: '王凡', roles: ['member'], password: '2026', studentId: 1 },
+  { id: 'u2', name: '张亮', roles: ['member'], password: '2026', studentId: 2 },
+  { id: 'u3', name: '曹婷婷', roles: ['member'], password: '2026', studentId: 3 },
+  { id: 'u4', name: '吴琼瑛', roles: ['member'], password: '2026', studentId: 4 },
+  { id: 'u5', name: '周海鹏', roles: ['member'], password: '2026', studentId: 5 },
+  { id: 'u6', name: '尹连鹏', roles: ['member'], password: '2026', studentId: 6 },
+  { id: 'u7', name: '楼文妤', roles: ['member'], password: '2026', studentId: 7 },
+  { id: 'u8', name: '杨娟', roles: ['member'], password: '2026', studentId: 8 },
+  { id: 'u9', name: '王微微', roles: ['member'], password: '2026', studentId: 9 },
+  { id: 'u10', name: '罗慧', roles: ['member'], password: '2026', studentId: 10 },
+  { id: 'u11', name: '谢恩治', roles: ['member'], password: '2026', studentId: 11 },
+  { id: 'u12', name: '王小龙', roles: ['member'], password: '2026', studentId: 12 },
+  { id: 'admin', name: '管理员', roles: ['admin'], password: '20262026', studentId: 0 },
 ];
 
 export const TASKS: TaskConfig[] = [
