@@ -28,12 +28,12 @@ function AppContent() {
     return <LoginPage />;
   }
 
-  // Admin routing
-  if (user?.role === 'admin') {
+  // Admin/Jiwei routing
+  if (user?.roles.includes('admin') || user?.roles.includes('jiwei')) {
     if (hash === '#dashboard') {
       return <DashboardPage />;
     }
-    if (hash === '#admin') {
+    if (hash === '#admin' && user?.roles.includes('admin')) {
       return <AdminPage />;
     }
     if (hash === '#history') {
@@ -45,7 +45,8 @@ function AppContent() {
     if (hash === '') {
       return <MyCheckinPage />;
     }
-    return <AdminPage />;
+    // Default for privileged users
+    return user?.roles.includes('admin') ? <AdminPage /> : <DashboardPage />;
   }
 
   // Member routing

@@ -1,4 +1,4 @@
-import { Check, X, AlertCircle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star } from 'lucide-react';
+import { Check, X, AlertCircle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star, Shield } from 'lucide-react';
 
 export const Icons = {
   Check,
@@ -24,7 +24,8 @@ export const Icons = {
   Circle,
   FileText,
   Users,
-  Star
+  Star,
+  Shield
 };
 
 export const MOTIVATIONAL_QUOTES = [

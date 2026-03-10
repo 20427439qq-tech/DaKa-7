@@ -1,9 +1,9 @@
-export type UserRole = "admin" | "member";
+export type UserRole = "admin" | "jiwei" | "member";
 
 export interface User {
   id: string;
   name: string;
-  role: UserRole;
+  roles: UserRole[];
   password?: string;
   studentId?: number;
 }

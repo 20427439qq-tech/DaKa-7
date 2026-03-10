@@ -44,7 +44,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3">
-            {user?.role === 'admin' && (
+            {(user?.roles.includes('admin') || user?.roles.includes('jiwei')) && (
               <div className="flex bg-white border border-gray-200 rounded-xl p-1 mr-2">
                 <a 
                   href="#" 
