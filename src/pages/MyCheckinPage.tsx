@@ -10,17 +10,27 @@ import { TeammateStatus } from '../components/checkin/TeammateStatus';
 import { TeammateDetailModal } from '../components/checkin/TeammateDetailModal';
 import { DailyCheckin, TaskKey, User } from '../types';
 import { TASKS, calculateCheckinStats, MOCK_USERS } from '../data/mockData';
-import { Icons, getRandomQuote, formatDate, formatCurrency } from '../lib/utils';
+import { Icons, getRandomQuote, formatDate, formatCurrency, getBeijingTime, COUNTRY_TIMEZONES, getTimeForCountry } from '../lib/utils';
 
 export const MyCheckinPage: React.FC = () => {
   const { user, users, logout } = useAuth();
-  const { getCheckin, saveCheckin, checkins } = useCheckinData();
+  const { getCheckin, saveCheckin, checkins, cheerTeammate } = useCheckinData();
   const [quote] = useState(getRandomQuote());
-  const today = new Date().toISOString().split('T')[0];
+  
+  const today = useMemo(() => {
+    const now = getBeijingTime();
+    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+  }, []);
   
   const completedTodayCount = useMemo(() => {
     return checkins.filter(c => c.date === today && c.completedCount === 7).length;
   }, [checkins, today]);
+
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<string>(() => {
+    const existing = getCheckin(user!.id, today);
+    return existing?.country || '中国';
+  });
 
   const [checkin, setCheckin] = useState<DailyCheckin>(() => {
     const existing = getCheckin(user!.id, today);
@@ -41,10 +51,13 @@ export const MyCheckinPage: React.FC = () => {
       completionRate: 0,
       donationAmount: 9000,
       updatedAt: new Date().toISOString(),
+      country: '中国',
+      cheers: []
     });
   });
 
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('保存成功，继续加油！');
   const [showModal, setShowModal] = useState(false);
   const [submitTime, setSubmitTime] = useState('');
 
@@ -86,7 +99,7 @@ export const MyCheckinPage: React.FC = () => {
   };
 
   const handleSave = () => {
-    const now = new Date();
+    const now = getTimeForCountry(checkin.country || '中国');
     const timeStr = `${now.getHours().toString().padStart(2, '0')}点${now.getMinutes().toString().padStart(2, '0')}分`;
     setSubmitTime(timeStr);
     
@@ -97,6 +110,127 @@ export const MyCheckinPage: React.FC = () => {
     saveCheckin(updated);
     setShowModal(true);
   };
+
+  const handleCountrySelect = (country: string) => {
+    setSelectedCountry(country);
+    setCheckin(prev => ({ ...prev, country }));
+    setShowCountryModal(false);
+    setToastMessage(`已切换至 ${country} 时间`);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
+  };
+
+  const handleCheer = (targetUserId: string) => {
+    cheerTeammate(targetUserId, today, user?.name || '匿名');
+    setToastMessage('加油已送达！');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
+  };
+
+  const modalContent = useMemo(() => {
+    const now = getTimeForCountry(checkin.country || '中国');
+    const isBefore10PM = now.getHours() < 22;
+    const isAllCompleted = checkin.completedCount === 7;
+    
+    if (isBefore10PM && isAllCompleted) {
+      const uncompletedTeammates = teammates.filter(t => {
+        const tCheckin = getCheckin(t.id, today);
+        return !tCheckin || tCheckin.completedCount < 7;
+      });
+
+      return (
+        <>
+          <h3 className="text-2xl font-black text-gray-900 mb-2">
+            太棒了！今日满分 🌟
+          </h3>
+          <div className="space-y-4 mb-8 text-left">
+            <p className="text-emerald-600 font-bold text-center italic">
+              “自律的你最闪耀，给还没完成的小伙伴加个油吧！”
+            </p>
+            
+            {uncompletedTeammates.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                {uncompletedTeammates.map(t => (
+                  <div key={t.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <span className="font-bold text-gray-700">{t.name}</span>
+                    <button
+                      onClick={() => handleCheer(t.id)}
+                      className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors"
+                    >
+                      <Icons.Heart size={12} fill="currentColor" />
+                      加油
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-400 text-sm py-4">
+                所有小伙伴都已完成，团队太强了！
+              </p>
+            )}
+            
+            <p className="text-[10px] font-bold text-gray-400 text-center">
+              提交时间：{submitTime} ({checkin.country})
+            </p>
+          </div>
+        </>
+      );
+    }
+
+    if (isBefore10PM) {
+      const target = new Date(now);
+      target.setHours(22, 0, 0, 0);
+      const diff = target.getTime() - now.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const remainingTasks = 7 - checkin.completedCount;
+      
+      return (
+        <>
+          <h3 className="text-2xl font-black text-gray-900 mb-2">
+            打卡已暂存
+          </h3>
+          <div className="space-y-3 mb-8">
+            <div className="bg-emerald-50 p-4 rounded-2xl">
+              <p className="text-emerald-800 font-bold text-sm">
+                距完成时间还有 {hours} 小时 {minutes} 分钟
+              </p>
+              <p className="text-emerald-600 text-xs mt-1">
+                你还有 {remainingTasks} 项没有打卡
+              </p>
+            </div>
+            {completedTodayCount > 0 && (
+              <p className="text-gray-500 text-sm font-medium">
+                已有 {completedTodayCount} 个小伙伴打卡完成
+              </p>
+            )}
+            <p className="text-xs font-bold text-gray-400">
+              今天提交打卡时间为 {submitTime}
+            </p>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <h3 className="text-2xl font-black text-gray-900 mb-2">
+          {checkin.donationAmount === 0 ? '今天打卡完成' : '打卡已保存'}
+        </h3>
+        
+        <div className="space-y-2 mb-8">
+          <p className="text-gray-600">
+            {checkin.donationAmount === 0 
+              ? '太棒了！您已完成今日所有挑战。' 
+              : `您今天需要乐捐 ${formatCurrency(checkin.donationAmount)}。`}
+          </p>
+          <p className="text-sm font-bold text-emerald-600">
+            今天提交打卡时间为 {submitTime}
+          </p>
+        </div>
+      </>
+    );
+  }, [checkin, completedTodayCount, submitTime]);
 
   // Auto-save on change
   useEffect(() => {
@@ -126,7 +260,22 @@ export const MyCheckinPage: React.FC = () => {
                 已有 {completedTodayCount} 人打卡完成
               </div>
             </div>
-            <p className="text-gray-500 mt-1 italic">“{quote}”</p>
+            <div className="flex items-center gap-2 mt-2">
+              <button 
+                onClick={() => setShowCountryModal(true)}
+                className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold flex items-center gap-1 hover:bg-blue-100 transition-colors"
+              >
+                <Icons.Plane size={12} />
+                出国时差: {checkin.country || '中国'}
+              </button>
+              {checkin.cheers && checkin.cheers.length > 0 && (
+                <div className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-bold flex items-center gap-1 animate-pulse">
+                  <Icons.Heart size={12} fill="currentColor" />
+                  {checkin.cheers.join('、')} 给你的加油
+                </div>
+              )}
+            </div>
+            <p className="text-gray-500 mt-2 italic">“{quote}”</p>
           </div>
           
           <button 
@@ -169,7 +318,7 @@ export const MyCheckinPage: React.FC = () => {
               保存今日打卡
             </button>
             <p className="text-xs text-gray-400">
-              最后更新于：{new Date(checkin.updatedAt).toLocaleTimeString()}
+              最后更新于：{new Date(new Date(checkin.updatedAt).toLocaleString("en-US", { timeZone: "Asia/Shanghai" })).toLocaleTimeString('zh-CN')}
             </p>
           </div>
 
@@ -189,6 +338,56 @@ export const MyCheckinPage: React.FC = () => {
             checkin={selectedTeammateCheckin}
             onClose={() => setShowTeammateModal(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Country Selection Modal */}
+      <AnimatePresence>
+        {showCountryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCountryModal(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6"
+            >
+              <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
+                <Icons.Plane className="text-blue-500" size={20} />
+                出国时差申请
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">选择您所在的国家/地区，我们将自动为您调整打卡截止时间（当地时间22:00）。</p>
+              
+              <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                {Object.keys(COUNTRY_TIMEZONES).map(country => (
+                  <button
+                    key={country}
+                    onClick={() => handleCountrySelect(country)}
+                    className={`px-4 py-3 rounded-xl text-sm font-bold transition-all text-left ${
+                      checkin.country === country 
+                        ? 'bg-blue-500 text-white shadow-md' 
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    {country}
+                  </button>
+                ))}
+              </div>
+              
+              <button
+                onClick={() => setShowCountryModal(false)}
+                className="w-full mt-6 py-4 text-gray-400 font-bold hover:text-gray-600 transition-colors"
+              >
+                取消
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -215,20 +414,7 @@ export const MyCheckinPage: React.FC = () => {
                 {checkin.donationAmount === 0 ? <Icons.Check size={40} /> : <Icons.AlertCircle size={40} />}
               </div>
               
-              <h3 className="text-2xl font-black text-gray-900 mb-2">
-                {checkin.donationAmount === 0 ? '今天打卡完成' : '打卡已保存'}
-              </h3>
-              
-              <div className="space-y-2 mb-8">
-                <p className="text-gray-600">
-                  {checkin.donationAmount === 0 
-                    ? '太棒了！您已完成今日所有挑战。' 
-                    : `您今天需要乐捐 ${formatCurrency(checkin.donationAmount)}。`}
-                </p>
-                <p className="text-sm font-bold text-emerald-600">
-                  今天提交打卡时间为 {submitTime}
-                </p>
-              </div>
+              {modalContent}
               
               <button
                 onClick={() => setShowModal(false)}
@@ -251,7 +437,7 @@ export const MyCheckinPage: React.FC = () => {
             className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full shadow-xl font-bold flex items-center gap-2 z-50"
           >
             <Icons.Check size={18} />
-            保存成功，继续加油！
+            {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>

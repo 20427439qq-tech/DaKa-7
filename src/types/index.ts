@@ -31,6 +31,8 @@ export interface DailyCheckin {
   completionRate: number;
   donationAmount: number;
   updatedAt: string;
+  country?: string;
+  cheers?: string[];
 }
 
 export interface TaskConfig {

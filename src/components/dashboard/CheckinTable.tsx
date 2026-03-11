@@ -1,6 +1,6 @@
 import React from 'react';
 import { DailyCheckin, User } from '../../types';
-import { Icons, formatCurrency } from '../../lib/utils';
+import { Icons, formatCurrency, getBeijingTime } from '../../lib/utils';
 
 interface CheckinTableProps {
   checkins: DailyCheckin[];
@@ -10,8 +10,8 @@ interface CheckinTableProps {
 }
 
 export const CheckinTable: React.FC<CheckinTableProps> = ({ checkins, members, selectedDate, onViewDetail }) => {
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const now = getBeijingTime();
+  const todayStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
   const isBefore10PM = now.getHours() < 22;
   const hideDonation = selectedDate === todayStr && isBefore10PM;
 
@@ -111,9 +111,14 @@ export const CheckinTable: React.FC<CheckinTableProps> = ({ checkins, members, s
                   
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     {checkin ? (
-                      <span className="text-sm font-bold text-gray-600">
-                        {new Date(checkin.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm font-bold text-gray-600">
+                          {new Date(checkin.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-bold">
+                          {checkin.country || '中国'}
+                        </span>
+                      </div>
                     ) : (
                       <span className="text-xs text-red-400 font-bold">未打卡</span>
                     )}

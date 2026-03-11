@@ -8,12 +8,15 @@ import { CheckinTable } from '../components/dashboard/CheckinTable';
 import { DonationDetailsModal } from '../components/dashboard/DonationDetailsModal';
 import { DailyCheckin } from '../types';
 import { MOCK_USERS } from '../data/mockData';
-import { Icons, formatCurrency, formatDate } from '../lib/utils';
+import { Icons, formatCurrency, formatDate, getBeijingTime } from '../lib/utils';
 
 export const DashboardPage: React.FC = () => {
   const { user, users, logout } = useAuth();
   const { checkins, getTeamStats, getDonationHistory } = useCheckinData();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = getBeijingTime();
+    return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCheckin, setSelectedCheckin] = useState<DailyCheckin | null>(null);
   const [showDonationHistory, setShowDonationHistory] = useState(false);
@@ -27,8 +30,8 @@ export const DashboardPage: React.FC = () => {
     m.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const now = getBeijingTime();
+  const todayStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
   const isBefore10PM = now.getHours() < 22;
   const hideDonation = selectedDate === todayStr && isBefore10PM;
 

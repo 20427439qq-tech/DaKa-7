@@ -1,4 +1,4 @@
-import { Check, X, AlertCircle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star } from 'lucide-react';
+import { Check, X, AlertCircle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star, Plane, Heart, MessageCircle } from 'lucide-react';
 
 export const Icons = {
   Check,
@@ -24,7 +24,10 @@ export const Icons = {
   Circle,
   FileText,
   Users,
-  Star
+  Star,
+  Plane,
+  Heart,
+  MessageCircle
 };
 
 export const MOTIVATIONAL_QUOTES = [
@@ -89,4 +92,33 @@ export const formatCurrency = (amount: number) => {
 export const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+export const getBeijingTime = () => {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
+};
+
+export const COUNTRY_TIMEZONES: Record<string, string> = {
+  "中国": "Asia/Shanghai",
+  "美国 (纽约)": "America/New_York",
+  "美国 (洛杉矶)": "America/Los_Angeles",
+  "英国": "Europe/London",
+  "日本": "Asia/Tokyo",
+  "德国": "Europe/Berlin",
+  "法国": "Europe/Paris",
+  "澳大利亚 (悉尼)": "Australia/Sydney",
+  "加拿大 (多伦多)": "America/Toronto",
+  "新加坡": "Asia/Singapore",
+  "韩国": "Asia/Seoul",
+  "泰国": "Asia/Bangkok",
+  "越南": "Asia/Ho_Chi_Minh",
+  "印度": "Asia/Kolkata",
+  "俄罗斯 (莫斯科)": "Europe/Moscow",
+  "巴西 (圣保罗)": "America/Sao_Paulo",
+  "阿联酋 (迪拜)": "Asia/Dubai",
+};
+
+export const getTimeForCountry = (countryName: string) => {
+  const timezone = COUNTRY_TIMEZONES[countryName] || "Asia/Shanghai";
+  return new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
 };

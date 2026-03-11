@@ -73,8 +73,10 @@ export const HistoryPage: React.FC = () => {
                       <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-bold ${
                         checkin.completionRate === 100 ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500'
                       }`}>
-                        <span className="text-xs leading-none">{new Date(checkin.date).getDate()}</span>
-                        <span className="text-[10px] uppercase tracking-tighter">{new Date(checkin.date).toLocaleDateString('zh-CN', { month: 'short' })}</span>
+                        <span className="text-xs leading-none">{checkin.date.split('-')[2]}</span>
+                        <span className="text-[10px] uppercase tracking-tighter">
+                          {new Date(checkin.date + "T00:00:00+08:00").toLocaleDateString('zh-CN', { month: 'short' })}
+                        </span>
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900">{formatDate(checkin.date)}</p>

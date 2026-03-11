@@ -2,6 +2,7 @@ import { useLocalStorage } from './useLocalStorage';
 import { DailyCheckin, User } from '../types';
 import { INITIAL_HISTORY, calculateCheckinStats } from '../data/mockData';
 import { useMemo } from 'react';
+import { getBeijingTime } from '../lib/utils';
 
 export function useCheckinData() {
   const [checkins, setCheckins] = useLocalStorage<DailyCheckin[]>('team_checkins', INITIAL_HISTORY);
@@ -32,8 +33,8 @@ export function useCheckinData() {
     const checkedInCount = dayCheckins.length;
     const notCheckedInCount = totalMembers - checkedInCount;
     
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const now = getBeijingTime();
+    const todayStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
     const currentHour = now.getHours();
     const isAfter10PM = currentHour >= 22;
     
@@ -89,8 +90,8 @@ export function useCheckinData() {
         }
       });
 
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
+      const now = getBeijingTime();
+      const todayStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
       const currentHour = now.getHours();
       const isAfter10PM = currentHour >= 22;
       
@@ -150,8 +151,10 @@ export function useCheckinData() {
 
     // Calculate streak
     let streakDays = 0;
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const now = getBeijingTime();
+    const today = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    const yesterdayDate = new Date(now.getTime() - 86400000);
+    const yesterday = `${yesterdayDate.getFullYear()}-${(yesterdayDate.getMonth() + 1).toString().padStart(2, '0')}-${yesterdayDate.getDate().toString().padStart(2, '0')}`;
     
     let currentCheckDate = userCheckins[0]?.date === today ? today : (userCheckins[0]?.date === yesterday ? yesterday : null);
     
@@ -177,12 +180,51 @@ export function useCheckinData() {
     };
   };
 
+  const cheerTeammate = (targetUserId: string, date: string, fromUserName: string) => {
+    setCheckins(prev => {
+      const index = prev.findIndex(c => c.userId === targetUserId && c.date === date);
+      if (index >= 0) {
+        const newCheckins = [...prev];
+        const currentCheers = newCheckins[index].cheers || [];
+        if (!currentCheers.includes(fromUserName)) {
+          newCheckins[index] = {
+            ...newCheckins[index],
+            cheers: [...currentCheers, fromUserName]
+          };
+        }
+        return newCheckins;
+      } else {
+        // Create a placeholder checkin for the user if it doesn't exist
+        const newCheckin: DailyCheckin = {
+          id: `${targetUserId}-${date}`,
+          userId: targetUserId,
+          date: date,
+          wakeUpAt8: false,
+          focusOneHour: false,
+          exercise30Min: false,
+          read10Pages: false,
+          learnNewSkill: false,
+          noJunkFood: false,
+          challengeNote: '',
+          completedCount: 0,
+          completionRate: 0,
+          donationAmount: 9000,
+          updatedAt: new Date().toISOString(),
+          country: '中国',
+          cheers: [fromUserName]
+        };
+        return [...prev, newCheckin];
+      }
+    });
+  };
+
   return {
     checkins,
     getCheckin,
     saveCheckin,
     getTeamStats,
     getPersonalStats,
-    getDonationHistory
+    getDonationHistory,
+    cheerTeammate
   };
 }
