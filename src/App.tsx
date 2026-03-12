@@ -13,6 +13,7 @@ import { useAuth } from './hooks/useAuth';
 import { AuthProvider } from './context/AuthContext';
 
 import { AdminPage } from './pages/AdminPage';
+import { TaskMaintenancePage } from './pages/TaskMaintenancePage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function AppContent() {
@@ -51,6 +52,9 @@ function AppContent() {
     }
     if (hash === '#admin') {
       return <AdminPage />;
+    }
+    if (hash === '#tasks') {
+      return <TaskMaintenancePage />;
     }
     if (hash === '#history') {
       return <HistoryPage />;

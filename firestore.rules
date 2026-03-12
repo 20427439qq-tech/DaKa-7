@@ -92,6 +92,11 @@ service cloud.firestore {
       allow create, update, delete: if true;
     }
 
+    match /tasks/{taskId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     match /test/connection {
       allow read: if true;
     }

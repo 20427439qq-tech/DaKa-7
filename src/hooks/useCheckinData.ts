@@ -1,10 +1,11 @@
-import { DailyCheckin, User } from '../types';
+import { DailyCheckin, User, CheckinTask } from '../types';
 import { calculateCheckinStats } from '../data/mockData';
 import { useMemo, useState, useEffect } from 'react';
 import { getBeijingTime } from '../lib/utils';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { useAuth } from './useAuth';
 import { 
   collection, 
   doc, 
@@ -16,6 +17,7 @@ import {
 } from 'firebase/firestore';
 
 export function useCheckinData() {
+  const { tasks } = useAuth();
   const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -44,7 +46,7 @@ export function useCheckinData() {
   };
 
   const saveCheckin = async (checkin: DailyCheckin) => {
-    const updatedCheckin = calculateCheckinStats(checkin);
+    const updatedCheckin = calculateCheckinStats(checkin, tasks);
     const checkinId = `${updatedCheckin.userId}-${updatedCheckin.date}`;
     try {
       await setDoc(doc(db, 'checkins', checkinId), { ...updatedCheckin, id: checkinId });
@@ -67,7 +69,8 @@ export function useCheckinData() {
     const currentHour = now.getHours();
     const isAfter10PM = currentHour >= 22;
     
-    const actualDailyDonation = dayCheckins.reduce((sum, c) => sum + c.donationAmount, 0) + (notCheckedInCount * 9000);
+    const notCheckedInDonation = tasks.length * 1000 + 2000;
+    const actualDailyDonation = dayCheckins.reduce((sum, c) => sum + c.donationAmount, 0) + (notCheckedInCount * notCheckedInDonation);
     
     if (date === todayStr && !isAfter10PM) {
       return 0;
@@ -90,14 +93,15 @@ export function useCheckinData() {
         if (c.donationAmount > 0) {
           const user = teamMembers.find(m => m.id === c.userId);
           if (user) {
-            const missedTasks = [];
-            if (!c.wakeUpAt8) missedTasks.push("早起");
-            if (!c.focusOneHour) missedTasks.push("专注");
-            if (!c.exercise30Min) missedTasks.push("运动");
-            if (!c.read10Pages) missedTasks.push("阅读");
-            if (!c.learnNewSkill) missedTasks.push("技能");
-            if (!c.noJunkFood) missedTasks.push("饮食");
-            if (c.challengeNote.trim().length === 0) missedTasks.push("记录");
+            const missedTasks: string[] = [];
+            tasks.forEach(task => {
+              const val = c.taskValues?.[task.id];
+              if (task.type === 'checkbox') {
+                if (val !== true) missedTasks.push(task.title);
+              } else if (!val || val.toString().trim().length === 0) {
+                missedTasks.push(task.title);
+              }
+            });
             
             details.push({
               name: user.name,
@@ -109,12 +113,13 @@ export function useCheckinData() {
       });
       
       // 2. Not checked in
+      const notCheckedInDonation = tasks.length * 1000 + 2000;
       teamMembers.forEach(m => {
         if (!checkedInUserIds.has(m.id)) {
           details.push({
             name: m.name,
             reason: "未打卡",
-            amount: 9000
+            amount: notCheckedInDonation
           });
         }
       });
@@ -224,20 +229,16 @@ export function useCheckinData() {
         }
       } else {
         // Create a placeholder checkin for the user if it doesn't exist
+        const notCheckedInDonation = tasks.length * 1000 + 2000;
         const newCheckin: DailyCheckin = {
           id: checkinId,
           userId: targetUserId,
           date: date,
-          wakeUpAt8: false,
-          focusOneHour: false,
-          exercise30Min: false,
-          read10Pages: false,
-          learnNewSkill: false,
-          noJunkFood: false,
+          taskValues: {},
           challengeNote: '',
           completedCount: 0,
           completionRate: 0,
-          donationAmount: 9000,
+          donationAmount: notCheckedInDonation,
           updatedAt: new Date().toISOString(),
           country: '中国',
           cheers: [fromUserName]

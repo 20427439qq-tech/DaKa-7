@@ -6,10 +6,11 @@ import { Header } from '../components/layout/Header';
 import { Icons, formatCurrency, formatDate } from '../lib/utils';
 
 export const HistoryPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, tasks } = useAuth();
   const { getPersonalStats } = useCheckinData();
   const stats = getPersonalStats(user!.id);
   const [filterDate, setFilterDate] = useState('');
+  const totalTasks = tasks.length || 7;
 
   const filteredHistory = stats.history.filter(c => 
     !filterDate || c.date.includes(filterDate)
@@ -87,7 +88,7 @@ export const HistoryPage: React.FC = () => {
                               style={{ width: `${checkin.completionRate}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium text-gray-500">{checkin.completedCount}/7</span>
+                          <span className="text-xs font-medium text-gray-500">{checkin.completedCount}/{totalTasks}</span>
                         </div>
                       </div>
                     </div>

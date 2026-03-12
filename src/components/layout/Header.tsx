@@ -45,6 +45,16 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
                   账号管理
                 </a>
                 <a 
+                  href="#tasks" 
+                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                    window.location.hash === '#tasks' 
+                      ? 'bg-emerald-50 text-emerald-700' 
+                      : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  打卡维护
+                </a>
+                <a 
                   href="#dashboard" 
                   className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                     window.location.hash === '#dashboard' 

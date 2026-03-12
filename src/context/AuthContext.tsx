@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
-import { User } from '../types';
+import { User, CheckinTask } from '../types';
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -19,6 +19,7 @@ import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 interface AuthContextType {
   user: User | null;
   users: User[];
+  tasks: CheckinTask[];
   login: (name: string, password: string, selectedRole: 'admin' | 'member') => Promise<{ success: boolean, message?: string, mustChange?: boolean }>;
   logout: () => void;
   updatePassword: (newPassword: string) => Promise<void>;
@@ -27,6 +28,9 @@ interface AuthContextType {
   updateUser: (id: string, updates: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   resetPassword: (id: string) => Promise<void>;
+  addTask: (task: Omit<CheckinTask, 'id'>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<CheckinTask>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   isAuthenticated: boolean;
   isAuthReady: boolean;
   authError: string | null;
@@ -37,6 +41,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [tasks, setTasks] = useState<CheckinTask[]>([]);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -135,6 +140,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return () => unsubscribeUsers();
+  }, [isAuthReady]);
+
+  // Listen for tasks collection changes
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    const unsubscribeTasks = onSnapshot(collection(db, 'tasks'), async (snapshot) => {
+      if (snapshot.empty) {
+        try {
+          const { INITIAL_TASKS } = await import('../data/mockData');
+          for (const task of INITIAL_TASKS) {
+            await setDoc(doc(db, 'tasks', task.id), task);
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.WRITE, 'tasks');
+        }
+      } else {
+        const tasksList = snapshot.docs.map(doc => doc.data() as CheckinTask);
+        setTasks(tasksList.sort((a, b) => a.order - b.order));
+      }
+    }, (error) => {
+      console.error("Tasks list error:", error);
+    });
+
+    return () => unsubscribeTasks();
   }, [isAuthReady]);
 
   const login = async (name: string, password: string, selectedRole: 'admin' | 'member') => {
@@ -259,10 +289,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const addTask = async (task: Omit<CheckinTask, 'id'>) => {
+    const id = `t${Date.now()}`;
+    try {
+      await setDoc(doc(db, 'tasks', id), { ...task, id });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `tasks/${id}`);
+    }
+  };
+
+  const updateTask = async (id: string, updates: Partial<CheckinTask>) => {
+    try {
+      await updateDoc(doc(db, 'tasks', id), updates);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `tasks/${id}`);
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'tasks', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `tasks/${id}`);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       users,
+      tasks,
       login, 
       logout, 
       updatePassword, 
@@ -271,6 +327,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       updateUser,
       deleteUser,
       resetPassword,
+      addTask,
+      updateTask,
+      deleteTask,
       isAuthenticated: !!user,
       isAuthReady,
       authError

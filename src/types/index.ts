@@ -10,24 +10,22 @@ export interface User {
   mustChangePassword?: boolean;
 }
 
-export type TaskKey =
-  | "wakeUpAt8"
-  | "focusOneHour"
-  | "exercise30Min"
-  | "read10Pages"
-  | "learnNewSkill"
-  | "noJunkFood";
+export type TaskType = "checkbox" | "image" | "audio" | "file" | "text";
+
+export interface CheckinTask {
+  id: string;
+  title: string;
+  description: string;
+  type: TaskType;
+  order: number;
+  deadline?: string;
+}
 
 export interface DailyCheckin {
   id: string;
   userId: string;
   date: string;
-  wakeUpAt8: boolean;
-  focusOneHour: boolean;
-  exercise30Min: boolean;
-  read10Pages: boolean;
-  learnNewSkill: boolean;
-  noJunkFood: boolean;
+  taskValues: Record<string, any>; // taskId -> value (boolean, string for URL/text)
   challengeNote: string;
   completedCount: number;
   completionRate: number;
@@ -35,12 +33,6 @@ export interface DailyCheckin {
   updatedAt: string;
   country?: string;
   cheers?: string[];
-}
-
-export interface TaskConfig {
-  key: TaskKey;
-  title: string;
-  description: string;
 }
 
 export interface DonationDetail {
@@ -70,4 +62,5 @@ export interface PersonalStats {
   totalDonation: number;
   averageRate: number;
   streakDays: number;
+  history: DailyCheckin[];
 }

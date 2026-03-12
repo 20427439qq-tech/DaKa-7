@@ -11,7 +11,7 @@ import { MOCK_USERS } from '../data/mockData';
 import { Icons, formatCurrency, formatDate, getBeijingTime } from '../lib/utils';
 
 export const DashboardPage: React.FC = () => {
-  const { user, users, logout } = useAuth();
+  const { user, users, logout, tasks } = useAuth();
   const { checkins, getTeamStats, getDonationHistory } = useCheckinData();
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = getBeijingTime();
@@ -68,6 +68,16 @@ export const DashboardPage: React.FC = () => {
                   }`}
                 >
                   账号管理
+                </a>
+                <a 
+                  href="#tasks" 
+                  className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                    window.location.hash === '#tasks' 
+                      ? 'bg-emerald-500 text-white shadow-md' 
+                      : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  打卡维护
                 </a>
                 <a 
                   href="#dashboard" 
@@ -182,37 +192,28 @@ export const DashboardPage: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <Icons.Check size={18} className="text-emerald-500" />
-                    七项任务状态
+                    打卡任务状态
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      { label: '1. 早晨八点起床', status: selectedCheckin.wakeUpAt8 },
-                      { label: '2. 一个小时无打扰', status: selectedCheckin.focusOneHour },
-                      { label: '3. 半小时运动', status: selectedCheckin.exercise30Min },
-                      { label: '4. 每天十页书', status: selectedCheckin.read10Pages },
-                      { label: '5. 学习一个新技能', status: selectedCheckin.learnNewSkill },
-                      { label: '6. 不吃垃圾食品', status: selectedCheckin.noJunkFood },
-                      { label: '7. 记录挑战过程', status: selectedCheckin.challengeNote.trim().length > 0 },
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
-                        <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                        {item.status ? (
-                          <Icons.Check className="text-emerald-500" size={16} />
-                        ) : (
-                          <Icons.X className="text-red-400" size={16} />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <Icons.Info size={18} className="text-blue-500" />
-                    挑战过程记录
-                  </h4>
-                  <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 text-sm text-gray-700 leading-relaxed italic">
-                    {selectedCheckin.challengeNote || '该成员今日未填写挑战过程。'}
+                  <div className="grid grid-cols-1 gap-2">
+                    {tasks.map((task, i) => {
+                      const value = selectedCheckin.taskValues?.[task.id];
+                      const isCompleted = task.type === 'checkbox' ? value === true : !!value;
+                      return (
+                        <div key={task.id} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-bold text-gray-700">{i + 1}. {task.title}</span>
+                            {isCompleted ? (
+                              <Icons.Check className="text-emerald-500" size={16} />
+                            ) : (
+                              <Icons.X className="text-red-400" size={16} />
+                            )}
+                          </div>
+                          {isCompleted && task.type === 'text' && (
+                            <p className="text-xs text-gray-500 italic mt-1 line-clamp-3">{value}</p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

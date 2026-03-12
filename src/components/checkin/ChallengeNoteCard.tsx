@@ -17,7 +17,7 @@ export const ChallengeNoteCard: React.FC<ChallengeNoteCardProps> = ({ value, onC
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className={`font-bold text-lg ${isCompleted ? 'text-emerald-900' : 'text-gray-900'}`}>
-            记录挑战过程
+            挑战记录
           </h3>
           <p className="text-sm text-gray-500 mt-1">
             写出真实的挑战过程、反思、感受或收获（必填）

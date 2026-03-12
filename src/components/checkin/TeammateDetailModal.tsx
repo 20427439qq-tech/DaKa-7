@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icons, formatCurrency, formatDate } from '../../lib/utils';
-import { DailyCheckin, User, TaskKey } from '../../types';
-import { TASKS } from '../../data/mockData';
+import { DailyCheckin, User } from '../../types';
+import { useAuth } from '../../hooks/useAuth';
 
 interface TeammateDetailModalProps {
   user: User | null;
@@ -11,6 +11,7 @@ interface TeammateDetailModalProps {
 }
 
 export const TeammateDetailModal: React.FC<TeammateDetailModalProps> = ({ user, checkin, onClose }) => {
+  const { tasks } = useAuth();
   if (!user) return null;
 
   const today = new Date().toISOString().split('T')[0];
@@ -18,6 +19,7 @@ export const TeammateDetailModal: React.FC<TeammateDetailModalProps> = ({ user, 
   const now = new Date();
   const isBefore10PM = now.getHours() < 22;
   const displayDonation = (isToday && isBefore10PM) ? 0 : (checkin?.donationAmount || 0);
+  const totalTasks = tasks.length || 7;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -37,7 +39,7 @@ export const TeammateDetailModal: React.FC<TeammateDetailModalProps> = ({ user, 
         <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-black text-white ${
-              (checkin?.completedCount || 0) === 7 ? 'bg-emerald-500' : 'bg-blue-500'
+              (checkin?.completedCount || 0) === totalTasks ? 'bg-emerald-500' : 'bg-blue-500'
             }`}>
               {user.name.charAt(0)}
             </div>
@@ -60,7 +62,7 @@ export const TeammateDetailModal: React.FC<TeammateDetailModalProps> = ({ user, 
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">完成进度</p>
               <div className="flex items-end gap-1">
                 <span className="text-2xl font-black text-gray-900">{checkin?.completedCount || 0}</span>
-                <span className="text-sm text-gray-400 mb-1">/ 7</span>
+                <span className="text-sm text-gray-400 mb-1">/ {totalTasks}</span>
               </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
@@ -72,11 +74,12 @@ export const TeammateDetailModal: React.FC<TeammateDetailModalProps> = ({ user, 
           </div>
 
           <div className="space-y-3">
-            {TASKS.map((task) => {
-              const isCompleted = checkin ? checkin[task.key as TaskKey] : false;
+            {tasks.map((task) => {
+              const value = checkin?.taskValues?.[task.id];
+              const isCompleted = task.type === 'checkbox' ? value === true : !!value;
               return (
                 <div 
-                  key={task.key}
+                  key={task.id}
                   className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                     isCompleted ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-50 border-gray-100'
                   }`}
@@ -87,30 +90,24 @@ export const TeammateDetailModal: React.FC<TeammateDetailModalProps> = ({ user, 
                     }`}>
                       {isCompleted ? <Icons.Check size={16} /> : <Icons.Circle size={16} />}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className={`text-sm font-bold ${isCompleted ? 'text-emerald-900' : 'text-gray-500'}`}>
                         {task.title}
                       </p>
                       <p className="text-[10px] text-gray-400">{task.description}</p>
+                      {isCompleted && task.type === 'text' && (
+                        <p className="text-xs text-gray-600 italic mt-2 p-2 bg-white/50 rounded-lg border border-emerald-100/50">
+                          {value}
+                        </p>
+                      )}
                     </div>
                   </div>
+                  {isCompleted && task.type !== 'checkbox' && task.type !== 'text' && (
+                    <span className="text-[10px] text-emerald-600 font-bold">已提交</span>
+                  )}
                 </div>
               );
             })}
-
-            <div className={`p-4 rounded-xl border ${
-              (checkin?.challengeNote || '').trim() ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-50 border-gray-100'
-            }`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Icons.FileText size={16} className={(checkin?.challengeNote || '').trim() ? 'text-emerald-500' : 'text-gray-400'} />
-                <span className={`text-sm font-bold ${(checkin?.challengeNote || '').trim() ? 'text-emerald-900' : 'text-gray-500'}`}>
-                  今日挑战记录
-                </span>
-              </div>
-              <p className="text-xs text-gray-600 leading-relaxed italic">
-                {(checkin?.challengeNote || '').trim() || '暂无记录'}
-              </p>
-            </div>
           </div>
         </div>
 

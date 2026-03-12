@@ -1,4 +1,4 @@
-import { User, DailyCheckin, TaskConfig, TaskKey } from '../types';
+import { User, DailyCheckin, CheckinTask } from '../types';
 
 export const MOCK_USERS: User[] = [
   { id: 'u1', name: '王凡', roles: ['member'], password: '2026', studentId: 1 },
@@ -16,30 +16,34 @@ export const MOCK_USERS: User[] = [
   { id: 'admin', name: '管理员', roles: ['admin'], password: '20262026', studentId: 0 },
 ];
 
-export const TASKS: TaskConfig[] = [
-  { key: 'wakeUpAt8', title: '早起打卡', description: '每天早晨八点之前起床' },
-  { key: 'focusOneHour', title: '深度沉浸', description: '一个小时的无打扰时间' },
-  { key: 'exercise30Min', title: '每日运动', description: '半小时中等强度运动' },
-  { key: 'read10Pages', title: '每日阅读', description: '每天阅读至少十页书' },
-  { key: 'learnNewSkill', title: '技能进阶', description: '学习一个新技能或新知识点' },
-  { key: 'noJunkFood', title: '健康饮食', description: '不吃垃圾食品（油炸、高糖等）' },
+export const INITIAL_TASKS: CheckinTask[] = [
+  { id: 't1', title: '早安打卡', description: '08:00之前在群里发早上好', type: 'image', order: 1, deadline: '08:00' },
+  { id: 't2', title: '半小时冥想', description: '每天半小时冥想，22点之前发冥想记录', type: 'checkbox', order: 2, deadline: '22:00' },
+  { id: 't3', title: '每天运动', description: '万步是基础，其他运动可选项，发群里', type: 'image', order: 3 },
+  { id: 't4', title: '抄经', description: '22点前完成抄经', type: 'image', order: 4, deadline: '22:00' },
+  { id: 't5', title: '读经', description: '22点前完成读经', type: 'audio', order: 5, deadline: '22:00' },
+  { id: 't6', title: '时间管理', description: '22点前完成时间管理', type: 'image', order: 6, deadline: '22:00' },
+  { id: 't7', title: '作业', description: '22点前完成作业', type: 'file', order: 7, deadline: '22:00' },
+  { id: 't8', title: '挑战记录', description: '写出真实的挑战过程、反思、感受或收获', type: 'text', order: 8 },
 ];
 
-export const calculateCheckinStats = (checkin: DailyCheckin): DailyCheckin => {
-  const booleanTasks: TaskKey[] = [
-    'wakeUpAt8', 'focusOneHour', 'exercise30Min', 
-    'read10Pages', 'learnNewSkill', 'noJunkFood'
-  ];
+export const calculateCheckinStats = (checkin: DailyCheckin, tasks: CheckinTask[] = INITIAL_TASKS): DailyCheckin => {
+  const totalTasks = tasks.length;
+  let completedCount = 0;
+
+  tasks.forEach(task => {
+    const value = checkin.taskValues?.[task.id];
+    if (task.type === 'checkbox') {
+      if (value === true) completedCount++;
+    } else if (value && value.toString().trim().length > 0) {
+      completedCount++;
+    }
+  });
   
-  const completedBooleans = booleanTasks.filter(key => checkin[key]).length;
-  const noteCompleted = checkin.challengeNote.trim().length > 0;
+  const completionRate = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
   
-  const completedCount = completedBooleans + (noteCompleted ? 1 : 0);
-  const completionRate = (completedCount / 7) * 100;
-  
-  const donationAmount = 
-    (6 - completedBooleans) * 1000 + 
-    (noteCompleted ? 0 : 3000);
+  // 1000 per missed task, plus 2000 base penalty if not all tasks are completed
+  const donationAmount = completedCount === totalTasks ? 0 : (totalTasks - completedCount) * 1000 + 2000;
     
   return {
     ...checkin,

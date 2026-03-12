@@ -4,16 +4,15 @@ import { useAuth } from '../hooks/useAuth';
 import { useCheckinData } from '../hooks/useCheckinData';
 import { Header } from '../components/layout/Header';
 import { TaskCard } from '../components/checkin/TaskCard';
-import { ChallengeNoteCard } from '../components/checkin/ChallengeNoteCard';
 import { DonationSummary } from '../components/checkin/DonationSummary';
 import { TeammateStatus } from '../components/checkin/TeammateStatus';
 import { TeammateDetailModal } from '../components/checkin/TeammateDetailModal';
-import { DailyCheckin, TaskKey, User } from '../types';
-import { TASKS, calculateCheckinStats, MOCK_USERS } from '../data/mockData';
+import { DailyCheckin, User } from '../types';
+import { calculateCheckinStats } from '../data/mockData';
 import { Icons, getRandomQuote, formatDate, formatCurrency, getBeijingTime, COUNTRY_TIMEZONES, getTimeForCountry } from '../lib/utils';
 
 export const MyCheckinPage: React.FC = () => {
-  const { user, users, logout } = useAuth();
+  const { user, users, tasks, logout } = useAuth();
   const { getCheckin, saveCheckin, checkins, cheerTeammate, loading } = useCheckinData();
   const [quote] = useState(getRandomQuote());
   
@@ -23,8 +22,8 @@ export const MyCheckinPage: React.FC = () => {
   }, []);
   
   const completedTodayCount = useMemo(() => {
-    return checkins.filter(c => c.date === today && c.completedCount === 7).length;
-  }, [checkins, today]);
+    return checkins.filter(c => c.date === today && c.completedCount === tasks.length).length;
+  }, [checkins, today, tasks]);
 
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<string>('中国');
@@ -42,23 +41,18 @@ export const MyCheckinPage: React.FC = () => {
           id: `${user!.id}-${today}`,
           userId: user!.id,
           date: today,
-          wakeUpAt8: false,
-          focusOneHour: false,
-          exercise30Min: false,
-          read10Pages: false,
-          learnNewSkill: false,
-          noJunkFood: false,
+          taskValues: {},
           challengeNote: '',
           completedCount: 0,
           completionRate: 0,
-          donationAmount: 9000,
+          donationAmount: tasks.length * 1000,
           updatedAt: new Date().toISOString(),
           country: '中国',
           cheers: []
-        }));
+        }, tasks));
       }
     }
-  }, [loading, checkin, getCheckin, user, today]);
+  }, [loading, checkin, getCheckin, user, today, tasks]);
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('保存成功，继续加油！');
@@ -88,21 +82,17 @@ export const MyCheckinPage: React.FC = () => {
     setShowTeammateModal(true);
   };
 
-  const handleToggle = (key: TaskKey) => {
+  const handleTaskChange = (taskId: string, value: any) => {
     setCheckin(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      return calculateCheckinStats(next);
-    });
-  };
-
-  const handleNoteChange = (val: string) => {
-    setCheckin(prev => {
-      const next = { ...prev, challengeNote: val };
-      return calculateCheckinStats(next);
+      if (!prev) return null;
+      const newTaskValues = { ...(prev.taskValues || {}), [taskId]: value };
+      const next = { ...prev, taskValues: newTaskValues };
+      return calculateCheckinStats(next, tasks);
     });
   };
 
   const handleSave = () => {
+    if (!checkin) return;
     const now = getTimeForCountry(checkin.country || '中国');
     const timeStr = `${now.getHours().toString().padStart(2, '0')}点${now.getMinutes().toString().padStart(2, '0')}分`;
     setSubmitTime(timeStr);
@@ -117,7 +107,7 @@ export const MyCheckinPage: React.FC = () => {
 
   const handleCountrySelect = (country: string) => {
     setSelectedCountry(country);
-    setCheckin(prev => ({ ...prev, country }));
+    setCheckin(prev => prev ? ({ ...prev, country }) : null);
     setShowCountryModal(false);
     setToastMessage(`已切换至 ${country} 时间`);
     setShowToast(true);
@@ -135,12 +125,12 @@ export const MyCheckinPage: React.FC = () => {
     if (!checkin) return null;
     const now = getTimeForCountry(checkin.country || '中国');
     const isBefore10PM = now.getHours() < 22;
-    const isAllCompleted = checkin.completedCount === 7;
+    const isAllCompleted = checkin.completedCount === tasks.length;
     
     if (isBefore10PM && isAllCompleted) {
       const uncompletedTeammates = teammates.filter(t => {
         const tCheckin = getCheckin(t.id, today);
-        return !tCheckin || tCheckin.completedCount < 7;
+        return !tCheckin || tCheckin.completedCount < tasks.length;
       });
 
       return (
@@ -188,7 +178,7 @@ export const MyCheckinPage: React.FC = () => {
       const diff = target.getTime() - now.getTime();
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const remainingTasks = 7 - checkin.completedCount;
+      const remainingTasks = tasks.length - checkin.completedCount;
       
       return (
         <>
@@ -235,7 +225,7 @@ export const MyCheckinPage: React.FC = () => {
         </div>
       </>
     );
-  }, [checkin, completedTodayCount, submitTime]);
+  }, [checkin, completedTodayCount, submitTime, tasks, teammates]);
 
   // Auto-save on change
   useEffect(() => {
@@ -244,12 +234,16 @@ export const MyCheckinPage: React.FC = () => {
       saveCheckin(checkin);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [checkin]);
+  }, [checkin, saveCheckin]);
 
-  if (!checkin) {
+  // Only show loading if we are actually loading from DB or if checkin hasn't been initialized yet
+  if (loading || !checkin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+          <p className="text-sm text-gray-400 font-medium">正在加载打卡数据...</p>
+        </div>
       </div>
     );
   }
@@ -304,24 +298,31 @@ export const MyCheckinPage: React.FC = () => {
           <DonationSummary 
             amount={checkin.donationAmount} 
             completedCount={checkin.completedCount} 
+            totalCount={tasks.length}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {TASKS.map(task => (
-              <TaskCard
-                key={task.key}
-                title={task.title}
-                description={task.description}
-                completed={checkin[task.key]}
-                onToggle={() => handleToggle(task.key)}
-              />
-            ))}
+            {tasks.length > 0 ? (
+              tasks.map(task => (
+                <div key={task.id} className={task.type === 'text' ? 'md:col-span-2' : ''}>
+                  <TaskCard
+                    title={task.title}
+                    description={task.description}
+                    type={task.type}
+                    deadline={task.deadline}
+                    value={checkin.taskValues?.[task.id]}
+                    onChange={(val) => handleTaskChange(task.id, val)}
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-12 bg-white rounded-2xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-400">
+                <Icons.AlertCircle size={48} className="mb-4 opacity-20" />
+                <p className="font-bold">暂无打卡任务</p>
+                <p className="text-xs mt-1">请联系管理员添加任务</p>
+              </div>
+            )}
           </div>
-
-          <ChallengeNoteCard 
-            value={checkin.challengeNote} 
-            onChange={handleNoteChange} 
-          />
 
           <div className="flex flex-col items-center gap-4 mt-4">
             <button
