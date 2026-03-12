@@ -13,9 +13,10 @@ import { useAuth } from './hooks/useAuth';
 import { AuthProvider } from './context/AuthContext';
 
 import { AdminPage } from './pages/AdminPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function AppContent() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAuthReady } = useAuth();
   const [hash, setHash] = useState(window.location.hash);
 
   useEffect(() => {
@@ -24,8 +25,21 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return <LoginPage />;
+  }
+
+  // Force password change if required (except for super admin)
+  if (user?.mustChangePassword && user.id !== 'admin') {
+    return <ChangePasswordPage force={true} />;
   }
 
   // Admin routing
@@ -64,8 +78,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

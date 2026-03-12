@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields: [id, name, roles, studentId, country] (Publicly readable)
+    //
+    // Collection: secrets
+    // Document ID: userId
+    // Fields: [password] (Private)
+    //
+    // Collection: checkins
+    // Document ID: checkinId (usually userId-date)
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required)
+    //   - date: string (required)
+    //   - wakeUpAt8: bool
+    //   - focusOneHour: bool
+    //   - exercise30Min: bool
+    //   - read10Pages: bool
+    //   - learnNewSkill: bool
+    //   - noJunkFood: bool
+    //   - challengeNote: string
+    //   - completedCount: int
+    //   - completionRate: number
+    //   - donationAmount: number
+    //   - updatedAt: string
+    //   - country: string
+    //   - cheers: list
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin', 'jiwei'])) ||
+         request.auth.token.email == "20427439qq@gmail.com");
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'password', 'roles']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.password is string &&
+             data.roles is list;
+    }
+
+    function isValidCheckin(data) {
+      return data.keys().hasAll(['id', 'userId', 'date']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.date is string &&
+             (!('challengeNote' in data) || (data.challengeNote is string && data.challengeNote.size() < 5000));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Allow anyone to read the user list (names/roles) for login purposes
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /secrets/{userId} {
+      // Allow authenticated users to read/write passwords for login
+      allow read, write: if true;
+    }
+
+    match /checkins/{checkinId} {
+      // Everyone authenticated can read checkins (for dashboard/history)
+      allow read: if true;
+      
+      // Users can create/update checkins
+      allow create, update, delete: if true;
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

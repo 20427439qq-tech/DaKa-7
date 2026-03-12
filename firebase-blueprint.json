@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Application user profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "password": { "type": "string" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "country": { "type": "string" }
+      },
+      "required": ["id", "name", "password", "roles"]
+    },
+    "DailyCheckin": {
+      "title": "DailyCheckin",
+      "description": "Daily task check-in record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "wakeUpAt8": { "type": "boolean" },
+        "focusOneHour": { "type": "boolean" },
+        "exercise30Min": { "type": "boolean" },
+        "read10Pages": { "type": "boolean" },
+        "learnNewSkill": { "type": "boolean" },
+        "noJunkFood": { "type": "boolean" },
+        "challengeNote": { "type": "string" },
+        "completedCount": { "type": "integer" },
+        "completionRate": { "type": "number" },
+        "donationAmount": { "type": "number" },
+        "updatedAt": { "type": "string" },
+        "country": { "type": "string" },
+        "cheers": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "userId", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/checkins/{checkinId}": {
+      "schema": "DailyCheckin",
+      "description": "Daily check-in records"
+    }
+  }
+}

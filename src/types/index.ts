@@ -6,6 +6,8 @@ export interface User {
   roles: UserRole[];
   password?: string;
   studentId?: number;
+  country?: string;
+  mustChangePassword?: boolean;
 }
 
 export type TaskKey =

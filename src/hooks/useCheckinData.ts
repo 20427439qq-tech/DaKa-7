@@ -1,27 +1,56 @@
-import { useLocalStorage } from './useLocalStorage';
 import { DailyCheckin, User } from '../types';
-import { INITIAL_HISTORY, calculateCheckinStats } from '../data/mockData';
-import { useMemo } from 'react';
+import { calculateCheckinStats } from '../data/mockData';
+import { useMemo, useState, useEffect } from 'react';
 import { getBeijingTime } from '../lib/utils';
+import { db, auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  onSnapshot,
+  query,
+  where,
+  orderBy
+} from 'firebase/firestore';
 
 export function useCheckinData() {
-  const [checkins, setCheckins] = useLocalStorage<DailyCheckin[]>('team_checkins', INITIAL_HISTORY);
+  const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'checkins'), (snapshot) => {
+      const checkinsList = snapshot.docs.map(doc => doc.data() as DailyCheckin);
+      setCheckins(checkinsList);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'checkins');
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const getCheckin = (userId: string, date: string) => {
     return checkins.find(c => c.userId === userId && c.date === date);
   };
 
-  const saveCheckin = (checkin: DailyCheckin) => {
+  const saveCheckin = async (checkin: DailyCheckin) => {
     const updatedCheckin = calculateCheckinStats(checkin);
-    setCheckins(prev => {
-      const index = prev.findIndex(c => c.id === updatedCheckin.id);
-      if (index >= 0) {
-        const newCheckins = [...prev];
-        newCheckins[index] = updatedCheckin;
-        return newCheckins;
-      }
-      return [...prev, updatedCheckin];
-    });
+    const checkinId = `${updatedCheckin.userId}-${updatedCheckin.date}`;
+    try {
+      await setDoc(doc(db, 'checkins', checkinId), { ...updatedCheckin, id: checkinId });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `checkins/${checkinId}`);
+    }
   };
 
   const getDailyDonation = (date: string, members: User[]) => {
@@ -180,23 +209,23 @@ export function useCheckinData() {
     };
   };
 
-  const cheerTeammate = (targetUserId: string, date: string, fromUserName: string) => {
-    setCheckins(prev => {
-      const index = prev.findIndex(c => c.userId === targetUserId && c.date === date);
-      if (index >= 0) {
-        const newCheckins = [...prev];
-        const currentCheers = newCheckins[index].cheers || [];
+  const cheerTeammate = async (targetUserId: string, date: string, fromUserName: string) => {
+    const checkinId = `${targetUserId}-${date}`;
+    const checkin = checkins.find(c => c.userId === targetUserId && c.date === date);
+    
+    try {
+      if (checkin) {
+        const currentCheers = checkin.cheers || [];
         if (!currentCheers.includes(fromUserName)) {
-          newCheckins[index] = {
-            ...newCheckins[index],
+          await setDoc(doc(db, 'checkins', checkinId), {
+            ...checkin,
             cheers: [...currentCheers, fromUserName]
-          };
+          });
         }
-        return newCheckins;
       } else {
         // Create a placeholder checkin for the user if it doesn't exist
         const newCheckin: DailyCheckin = {
-          id: `${targetUserId}-${date}`,
+          id: checkinId,
           userId: targetUserId,
           date: date,
           wakeUpAt8: false,
@@ -213,13 +242,16 @@ export function useCheckinData() {
           country: '中国',
           cheers: [fromUserName]
         };
-        return [...prev, newCheckin];
+        await setDoc(doc(db, 'checkins', checkinId), newCheckin);
       }
-    });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `checkins/${checkinId}`);
+    }
   };
 
   return {
     checkins,
+    loading,
     getCheckin,
     saveCheckin,
     getTeamStats,

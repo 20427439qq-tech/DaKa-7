@@ -1,9 +1,10 @@
-import { Check, X, AlertCircle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star, Plane, Heart, MessageCircle } from 'lucide-react';
+import { Check, X, AlertCircle, AlertTriangle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star, Plane, Heart, MessageCircle } from 'lucide-react';
 
 export const Icons = {
   Check,
   X,
   AlertCircle,
+  AlertTriangle,
   Info,
   Calendar,
   User,

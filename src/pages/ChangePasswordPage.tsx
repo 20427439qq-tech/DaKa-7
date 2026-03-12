@@ -4,8 +4,12 @@ import { useAuth } from '../hooks/useAuth';
 import { Header } from '../components/layout/Header';
 import { Icons } from '../lib/utils';
 
-export const ChangePasswordPage: React.FC = () => {
-  const { user, logout, updatePassword } = useAuth();
+interface ChangePasswordPageProps {
+  force?: boolean;
+}
+
+export const ChangePasswordPage: React.FC<ChangePasswordPageProps> = ({ force }) => {
+  const { user, logout, updatePassword, completePasswordChange } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -13,10 +17,14 @@ export const ChangePasswordPage: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 4) {
       setError('密码长度至少为4位');
+      return;
+    }
+    if (newPassword === '2026') {
+      setError('新密码不能与默认密码相同');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -24,30 +32,43 @@ export const ChangePasswordPage: React.FC = () => {
       return;
     }
     
-    updatePassword(newPassword);
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      window.location.hash = '';
-    }, 2000);
+    try {
+      await updatePassword(newPassword);
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        if (force) {
+          completePasswordChange();
+        } else {
+          completePasswordChange();
+          window.location.hash = '';
+        }
+      }, 2000);
+    } catch (err) {
+      setError('密码修改失败，请重试');
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <Header user={user!} onLogout={logout} />
+      {!force && <Header user={user!} onLogout={logout} />}
       
-      <main className="max-w-md mx-auto px-4 pt-12">
+      <main className={`max-w-md mx-auto px-4 ${force ? 'pt-24' : 'pt-12'}`}>
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100"
         >
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg shadow-blue-200">
-              <Icons.Info size={32} />
+            <div className={`w-16 h-16 ${force ? 'bg-amber-500' : 'bg-blue-500'} rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg`}>
+              {force ? <Icons.AlertCircle size={32} /> : <Icons.Info size={32} />}
             </div>
-            <h2 className="text-2xl font-black text-gray-900">修改密码</h2>
-            <p className="text-gray-500 mt-1">用户名：{user?.name} (不可更改)</p>
+            <h2 className="text-2xl font-black text-gray-900">
+              {force ? '请修改初始密码' : '修改密码'}
+            </h2>
+            <p className="text-gray-500 mt-1">
+              {force ? '为了您的账号安全，首次登录或重置密码后必须修改密码' : `用户名：${user?.name}`}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -100,13 +121,15 @@ export const ChangePasswordPage: React.FC = () => {
             {error && <p className="text-red-500 text-xs font-medium text-center">{error}</p>}
 
             <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => window.location.hash = ''}
-                className="flex-1 bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition-all"
-              >
-                取消
-              </button>
+              {!force && (
+                <button
+                  type="button"
+                  onClick={() => window.location.hash = ''}
+                  className="flex-1 bg-gray-100 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  取消
+                </button>
+              )}
               <button
                 type="submit"
                 className="flex-1 bg-gray-900 text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg"
@@ -114,6 +137,16 @@ export const ChangePasswordPage: React.FC = () => {
                 确认修改
               </button>
             </div>
+            
+            {force && (
+              <button
+                type="button"
+                onClick={logout}
+                className="w-full text-gray-400 text-sm hover:text-gray-600 transition-colors mt-4"
+              >
+                退出登录
+              </button>
+            )}
           </form>
         </motion.div>
       </main>

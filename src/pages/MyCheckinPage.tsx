@@ -14,7 +14,7 @@ import { Icons, getRandomQuote, formatDate, formatCurrency, getBeijingTime, COUN
 
 export const MyCheckinPage: React.FC = () => {
   const { user, users, logout } = useAuth();
-  const { getCheckin, saveCheckin, checkins, cheerTeammate } = useCheckinData();
+  const { getCheckin, saveCheckin, checkins, cheerTeammate, loading } = useCheckinData();
   const [quote] = useState(getRandomQuote());
   
   const today = useMemo(() => {
@@ -27,34 +27,38 @@ export const MyCheckinPage: React.FC = () => {
   }, [checkins, today]);
 
   const [showCountryModal, setShowCountryModal] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<string>(() => {
-    const existing = getCheckin(user!.id, today);
-    return existing?.country || '中国';
-  });
+  const [selectedCountry, setSelectedCountry] = useState<string>('中国');
 
-  const [checkin, setCheckin] = useState<DailyCheckin>(() => {
-    const existing = getCheckin(user!.id, today);
-    if (existing) return existing;
-    
-    return calculateCheckinStats({
-      id: `${user!.id}-${today}`,
-      userId: user!.id,
-      date: today,
-      wakeUpAt8: false,
-      focusOneHour: false,
-      exercise30Min: false,
-      read10Pages: false,
-      learnNewSkill: false,
-      noJunkFood: false,
-      challengeNote: '',
-      completedCount: 0,
-      completionRate: 0,
-      donationAmount: 9000,
-      updatedAt: new Date().toISOString(),
-      country: '中国',
-      cheers: []
-    });
-  });
+  const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
+
+  useEffect(() => {
+    if (!loading && !checkin) {
+      const existing = getCheckin(user!.id, today);
+      if (existing) {
+        setCheckin(existing);
+        setSelectedCountry(existing.country || '中国');
+      } else {
+        setCheckin(calculateCheckinStats({
+          id: `${user!.id}-${today}`,
+          userId: user!.id,
+          date: today,
+          wakeUpAt8: false,
+          focusOneHour: false,
+          exercise30Min: false,
+          read10Pages: false,
+          learnNewSkill: false,
+          noJunkFood: false,
+          challengeNote: '',
+          completedCount: 0,
+          completionRate: 0,
+          donationAmount: 9000,
+          updatedAt: new Date().toISOString(),
+          country: '中国',
+          cheers: []
+        }));
+      }
+    }
+  }, [loading, checkin, getCheckin, user, today]);
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('保存成功，继续加油！');
@@ -128,6 +132,7 @@ export const MyCheckinPage: React.FC = () => {
   };
 
   const modalContent = useMemo(() => {
+    if (!checkin) return null;
     const now = getTimeForCountry(checkin.country || '中国');
     const isBefore10PM = now.getHours() < 22;
     const isAllCompleted = checkin.completedCount === 7;
@@ -234,11 +239,20 @@ export const MyCheckinPage: React.FC = () => {
 
   // Auto-save on change
   useEffect(() => {
+    if (!checkin) return;
     const timer = setTimeout(() => {
       saveCheckin(checkin);
     }, 1000);
     return () => clearTimeout(timer);
   }, [checkin]);
+
+  if (!checkin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">

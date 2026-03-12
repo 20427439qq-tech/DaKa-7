@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Header } from '../components/layout/Header';
 import { Icons } from '../lib/utils';
 import { User, UserRole } from '../types';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export const AdminPage: React.FC = () => {
   const { user, users, logout, addUser, updateUser, deleteUser, resetPassword } = useAuth();
@@ -11,6 +12,21 @@ export const AdminPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({ name: '', roles: ['member'] as UserRole[], studentId: '' });
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Confirmation modal state
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'info'
+  });
 
   const filteredUsers = users
     .filter(u => {
@@ -23,29 +39,39 @@ export const AdminPage: React.FC = () => {
     })
     .sort((a, b) => (a.studentId || 0) - (b.studentId || 0));
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
-    addUser({ 
-      name: formData.name, 
-      roles: formData.roles, 
-      password: '2026',
-      studentId: formData.studentId ? parseInt(formData.studentId) : undefined
-    });
-    setIsAddModalOpen(false);
-    setFormData({ name: '', roles: ['member'], studentId: '' });
+    try {
+      await addUser({ 
+        name: formData.name, 
+        roles: formData.roles, 
+        password: '2026',
+        studentId: formData.studentId ? parseInt(formData.studentId) : undefined
+      });
+      setIsAddModalOpen(false);
+      setFormData({ name: '', roles: ['member'], studentId: '' });
+    } catch (err: any) {
+      console.error("Add user failed:", err);
+      alert("新增账号失败，请检查权限设置。");
+    }
   };
 
-  const handleUpdateUser = (e: React.FormEvent) => {
+  const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser || !formData.name.trim()) return;
-    updateUser(editingUser.id, { 
-      name: formData.name, 
-      roles: formData.roles,
-      studentId: formData.studentId ? parseInt(formData.studentId) : undefined
-    });
-    setEditingUser(null);
-    setFormData({ name: '', roles: ['member'], studentId: '' });
+    try {
+      await updateUser(editingUser.id, { 
+        name: formData.name, 
+        roles: formData.roles,
+        studentId: formData.studentId ? parseInt(formData.studentId) : undefined
+      });
+      setEditingUser(null);
+      setFormData({ name: '', roles: ['member'], studentId: '' });
+    } catch (err: any) {
+      console.error("Update user failed:", err);
+      alert("修改账号失败，请检查权限设置。");
+    }
   };
 
   const openEditModal = (u: User) => {
@@ -137,7 +163,6 @@ export const AdminPage: React.FC = () => {
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">学号</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">成员信息</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">权限角色</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">当前密码</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">操作</th>
                 </tr>
               </thead>
@@ -176,14 +201,17 @@ export const AdminPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-600">
-                        {u.password}
-                      </code>
-                    </td>
-                    <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button 
-                          onClick={() => resetPassword(u.id)}
+                          onClick={() => {
+                            setConfirmConfig({
+                              isOpen: true,
+                              title: '重置密码',
+                              message: `确定要将 ${u.name} 的密码重置为 2026 吗？`,
+                              type: 'warning',
+                              onConfirm: () => resetPassword(u.id)
+                            });
+                          }}
                           className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
                           title="重置密码为 2026"
                         >
@@ -199,9 +227,13 @@ export const AdminPage: React.FC = () => {
                         {u.id !== 'admin' && (
                           <button 
                             onClick={() => {
-                              if (confirm(`确定要删除账号 ${u.name} 吗？`)) {
-                                deleteUser(u.id);
-                              }
+                              setConfirmConfig({
+                                isOpen: true,
+                                title: '删除账号',
+                                message: `确定要删除账号 ${u.name} 吗？此操作不可撤销。`,
+                                type: 'danger',
+                                onConfirm: () => deleteUser(u.id)
+                              });
                             }}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             title="删除账号"
@@ -310,6 +342,30 @@ export const AdminPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
+
+                {editingUser && editingUser.id !== 'admin' && (
+                  <div className="pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setConfirmConfig({
+                          isOpen: true,
+                          title: '重置密码',
+                          message: '确定要重置该账号密码为 2026 吗？下一次登录将强制要求改密。',
+                          type: 'warning',
+                          onConfirm: () => {
+                            resetPassword(editingUser.id);
+                            setEditingUser(null);
+                          }
+                        });
+                      }}
+                      className="w-full bg-amber-50 text-amber-600 py-3 rounded-xl font-bold hover:bg-amber-100 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Icons.RefreshCw size={18} />
+                      重置为默认密码 (2026)
+                    </button>
+                  </div>
+                )}
                 
                 <div className="pt-4">
                   <button 
@@ -324,6 +380,15 @@ export const AdminPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+      />
     </div>
   );
 };
