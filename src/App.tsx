@@ -14,6 +14,7 @@ import { AuthProvider } from './context/AuthContext';
 
 import { AdminPage } from './pages/AdminPage';
 import { TaskMaintenancePage } from './pages/TaskMaintenancePage';
+import { BestHomeworkPage } from './pages/BestHomeworkPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function AppContent() {
@@ -62,6 +63,9 @@ function AppContent() {
     if (hash === '#password') {
       return <ChangePasswordPage />;
     }
+    if (hash === '#best-homework') {
+      return <BestHomeworkPage />;
+    }
     if (hash === '') {
       return <MyCheckinPage />;
     }
@@ -75,6 +79,10 @@ function AppContent() {
 
   if (hash === '#password') {
     return <ChangePasswordPage />;
+  }
+
+  if (hash === '#best-homework') {
+    return <BestHomeworkPage />;
   }
 
   return <MyCheckinPage />;

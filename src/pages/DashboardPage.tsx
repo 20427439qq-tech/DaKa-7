@@ -6,6 +6,7 @@ import { Header } from '../components/layout/Header';
 import { StatsOverview } from '../components/dashboard/StatsOverview';
 import { CheckinTable } from '../components/dashboard/CheckinTable';
 import { DonationDetailsModal } from '../components/dashboard/DonationDetailsModal';
+import { HomeworkQualityCard } from '../components/checkin/HomeworkQualityCard';
 import { DailyCheckin } from '../types';
 import { MOCK_USERS } from '../data/mockData';
 import { Icons, formatCurrency, formatDate, getBeijingTime } from '../lib/utils';
@@ -199,19 +200,26 @@ export const DashboardPage: React.FC = () => {
                       const value = selectedCheckin.taskValues?.[task.id];
                       const isCompleted = task.type === 'checkbox' ? value === true : !!value;
                       return (
-                        <div key={task.id} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-bold text-gray-700">{i + 1}. {task.title}</span>
-                            {isCompleted ? (
-                              <Icons.Check className="text-emerald-500" size={16} />
-                            ) : (
-                              <Icons.X className="text-red-400" size={16} />
+                        <React.Fragment key={task.id}>
+                          <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-bold text-gray-700">{i + 1}. {task.title}</span>
+                              {isCompleted ? (
+                                <Icons.Check className="text-emerald-500" size={16} />
+                              ) : (
+                                <Icons.X className="text-red-400" size={16} />
+                              )}
+                            </div>
+                            {isCompleted && task.type === 'text' && (
+                              <p className="text-xs text-gray-500 italic mt-1 line-clamp-3">{value}</p>
                             )}
                           </div>
-                          {isCompleted && task.type === 'text' && (
-                            <p className="text-xs text-gray-500 italic mt-1 line-clamp-3">{value}</p>
+                          {task.id === 't7' && selectedCheckin.homeworkAnalysis && (
+                            <div className="mt-2 mb-4">
+                              <HomeworkQualityCard analysis={selectedCheckin.homeworkAnalysis} />
+                            </div>
                           )}
-                        </div>
+                        </React.Fragment>
                       );
                     })}
                   </div>

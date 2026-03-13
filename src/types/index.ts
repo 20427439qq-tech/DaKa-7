@@ -21,6 +21,24 @@ export interface CheckinTask {
   deadline?: string;
 }
 
+export interface HomeworkAnalysis {
+  readability: number;
+  logic: number;
+  philosophy: number;
+  reflection: number;
+  total: number;
+  feedback?: string;
+  wordCount?: number;
+  uploadTime?: string;
+  metadata?: {
+    studentId: string;
+    bookName: string;
+    homeworkNumber: string;
+    homeworkDate: string;
+    firstLine: string;
+  };
+}
+
 export interface DailyCheckin {
   id: string;
   userId: string;
@@ -33,6 +51,7 @@ export interface DailyCheckin {
   updatedAt: string;
   country?: string;
   cheers?: string[];
+  homeworkAnalysis?: HomeworkAnalysis;
 }
 
 export interface DonationDetail {

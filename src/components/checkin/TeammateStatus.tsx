@@ -6,10 +6,11 @@ import { User, DailyCheckin } from '../../types';
 interface TeammateStatusProps {
   teammates: User[];
   checkins: DailyCheckin[];
+  tasksCount: number;
   onTeammateClick: (userId: string) => void;
 }
 
-export const TeammateStatus: React.FC<TeammateStatusProps> = ({ teammates, checkins, onTeammateClick }) => {
+export const TeammateStatus: React.FC<TeammateStatusProps> = ({ teammates, checkins, tasksCount, onTeammateClick }) => {
   const today = new Date().toISOString().split('T')[0];
   
   return (
@@ -26,8 +27,9 @@ export const TeammateStatus: React.FC<TeammateStatusProps> = ({ teammates, check
         {teammates.map((member) => {
           const checkin = checkins.find(c => c.userId === member.id && c.date === today);
           const completedCount = checkin?.completedCount || 0;
-          const isFinished = completedCount === 7;
+          const isFinished = completedCount === tasksCount;
           const isStarted = completedCount > 0;
+          const score = checkin?.homeworkAnalysis?.total;
           
           return (
             <motion.button
@@ -58,6 +60,11 @@ export const TeammateStatus: React.FC<TeammateStatusProps> = ({ teammates, check
                     <Icons.Star size={8} fill="currentColor" />
                   </div>
                 )}
+                {score !== undefined && (
+                  <div className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-bold px-1 rounded-full border border-white min-w-[16px] h-4 flex items-center justify-center shadow-sm">
+                    {score}
+                  </div>
+                )}
               </div>
               <span className={`text-[11px] font-bold truncate w-full text-center ${
                 isFinished 
@@ -69,7 +76,7 @@ export const TeammateStatus: React.FC<TeammateStatusProps> = ({ teammates, check
                 {member.name}
               </span>
               <div className="flex items-center gap-0.5 mt-1">
-                {[...Array(7)].map((_, i) => (
+                {[...Array(tasksCount)].map((_, i) => (
                   <div 
                     key={i} 
                     className={`w-1 h-1 rounded-full ${

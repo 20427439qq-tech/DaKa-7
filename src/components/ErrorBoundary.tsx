@@ -1,77 +1,69 @@
-import * as React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Icons } from '../lib/utils';
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface State {
   hasError: boolean;
-  error: Error | null;
+  errorInfo: any | null;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
-  }
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    errorInfo: null
+  };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    try {
+      const info = JSON.parse(error.message);
+      return { hasError: true, errorInfo: info };
+    } catch {
+      return { hasError: true, errorInfo: { error: error.message } };
+    }
   }
 
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  private handleReset = () => {
-    this.setState({ hasError: false, error: null });
-    window.location.reload();
-  };
-
   public render() {
     if (this.state.hasError) {
-      let errorDetails = null;
-      try {
-        if (this.state.error?.message) {
-          errorDetails = JSON.parse(this.state.error.message);
-        }
-      } catch (e) {
-        // Not a JSON error
-      }
+      const isQuotaError = this.state.errorInfo?.error?.includes('resource-exhausted') || 
+                          this.state.errorInfo?.error?.includes('Quota exceeded');
 
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-gray-100 text-center">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Icons.AlertCircle size={32} />
+          <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center border border-red-100">
+            <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Icons.AlertTriangle size={40} />
             </div>
             
-            <h2 className="text-2xl font-black text-gray-900 mb-2">出错了</h2>
-            <p className="text-gray-500 mb-6">
-              {errorDetails 
-                ? `权限不足或数据访问受限 (${errorDetails.operationType})` 
-                : '应用程序遇到了一个意外错误。'}
-            </p>
-
-            {errorDetails && (
-              <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left overflow-hidden">
-                <p className="text-[10px] font-mono text-gray-400 break-all">
-                  Path: {errorDetails.path}<br />
-                  User: {errorDetails.authInfo.userId || '未登录'}
-                </p>
-              </div>
-            )}
+            <h2 className="text-2xl font-black text-gray-900 mb-4">
+              {isQuotaError ? '系统额度已用尽' : '出错了'}
+            </h2>
+            
+            <div className="bg-red-50 p-4 rounded-2xl mb-6 text-left">
+              <p className="text-sm text-red-800 font-medium leading-relaxed">
+                {isQuotaError 
+                  ? '由于当前使用的是免费版数据库，今日的写入额度已达到上限。系统将在北京时间下午自动重置额度，届时您可以继续打卡。'
+                  : (this.state.errorInfo?.error || '发生了未知错误，请稍后重试。')}
+              </p>
+            </div>
 
             <button
-              onClick={this.handleReset}
-              className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition-all"
+              onClick={() => window.location.reload()}
+              className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
             >
-              刷新页面
+              <Icons.RefreshCw size={20} />
+              重试
             </button>
+            
+            <p className="mt-6 text-[10px] text-gray-400 font-mono">
+              Error Code: {isQuotaError ? 'RESOURCE_EXHAUSTED' : 'APP_ERROR'}
+            </p>
           </div>
         </div>
       );

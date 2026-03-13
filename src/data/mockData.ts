@@ -24,7 +24,6 @@ export const INITIAL_TASKS: CheckinTask[] = [
   { id: 't5', title: '读经', description: '22点前完成读经', type: 'audio', order: 5, deadline: '22:00' },
   { id: 't6', title: '时间管理', description: '22点前完成时间管理', type: 'image', order: 6, deadline: '22:00' },
   { id: 't7', title: '作业', description: '22点前完成作业', type: 'file', order: 7, deadline: '22:00' },
-  { id: 't8', title: '挑战记录', description: '写出真实的挑战过程、反思、感受或收获', type: 'text', order: 8 },
 ];
 
 export const calculateCheckinStats = (checkin: DailyCheckin, tasks: CheckinTask[] = INITIAL_TASKS): DailyCheckin => {

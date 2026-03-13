@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Icons, formatCurrency, formatDate } from '../../lib/utils';
 import { DailyCheckin, User } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { HomeworkQualityCard } from './HomeworkQualityCard';
 
 interface TeammateDetailModalProps {
   user: User | null;
@@ -78,34 +79,40 @@ export const TeammateDetailModal: React.FC<TeammateDetailModalProps> = ({ user, 
               const value = checkin?.taskValues?.[task.id];
               const isCompleted = task.type === 'checkbox' ? value === true : !!value;
               return (
-                <div 
-                  key={task.id}
-                  className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                    isCompleted ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-50 border-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      isCompleted ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-400'
-                    }`}>
-                      {isCompleted ? <Icons.Check size={16} /> : <Icons.Circle size={16} />}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-bold ${isCompleted ? 'text-emerald-900' : 'text-gray-500'}`}>
-                        {task.title}
-                      </p>
-                      <p className="text-[10px] text-gray-400">{task.description}</p>
-                      {isCompleted && task.type === 'text' && (
-                        <p className="text-xs text-gray-600 italic mt-2 p-2 bg-white/50 rounded-lg border border-emerald-100/50">
-                          {value}
+                <React.Fragment key={task.id}>
+                  <div 
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      isCompleted ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-50 border-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        isCompleted ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-400'
+                      }`}>
+                        {isCompleted ? <Icons.Check size={16} /> : <Icons.Circle size={16} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-bold ${isCompleted ? 'text-emerald-900' : 'text-gray-500'}`}>
+                          {task.title}
                         </p>
-                      )}
+                        <p className="text-[10px] text-gray-400">{task.description}</p>
+                        {isCompleted && task.type === 'text' && (
+                          <p className="text-xs text-gray-600 italic mt-2 p-2 bg-white/50 rounded-lg border border-emerald-100/50">
+                            {value}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    {isCompleted && task.type !== 'checkbox' && task.type !== 'text' && (
+                      <span className="text-[10px] text-emerald-600 font-bold">已提交</span>
+                    )}
                   </div>
-                  {isCompleted && task.type !== 'checkbox' && task.type !== 'text' && (
-                    <span className="text-[10px] text-emerald-600 font-bold">已提交</span>
+                  {task.id === 't7' && checkin?.homeworkAnalysis && (
+                    <div className="mt-2 mb-4">
+                      <HomeworkQualityCard analysis={checkin.homeworkAnalysis} />
+                    </div>
                   )}
-                </div>
+                </React.Fragment>
               );
             })}
           </div>

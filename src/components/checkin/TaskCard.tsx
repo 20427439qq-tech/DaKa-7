@@ -1,18 +1,20 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icons } from '../../lib/utils';
-import { TaskType } from '../../types';
+import { TaskType, HomeworkAnalysis } from '../../types';
+import * as mammoth from 'mammoth';
 
 interface TaskCardProps {
   title: string;
   description: string;
   type: TaskType;
   value: any;
-  onChange: (value: any) => void;
+  onChange: (value: any, fileName?: string) => void;
   deadline?: string;
+  analysis?: HomeworkAnalysis;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ title, description, type, value, onChange, deadline }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ title, description, type, value, onChange, deadline, analysis }) => {
   const completed = type === 'checkbox' ? value === true : !!value;
 
   const renderInput = () => {
@@ -137,7 +139,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({ title, description, type, va
 
           // Export as low quality JPEG
           const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-          onChange(dataUrl);
+          onChange(dataUrl, file.name);
+          
+          // Reset input so the same file can be selected again
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
         };
         img.src = event.target?.result as string;
       };
@@ -145,12 +152,51 @@ export const TaskCard: React.FC<TaskCardProps> = ({ title, description, type, va
     } else {
       // For audio and other files, just check size and convert to base64
       if (file.size > 500 * 1024) {
-        alert('音频或文档请保持在 500KB 以内，否则无法保存。');
+        alert('文件请保持在 500KB 以内。');
         return;
       }
+      
+      const isDocx = file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.doc');
+      
+      if (isDocx) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          try {
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            const text = result.value;
+            
+            if (!text.trim()) {
+              alert('无法从该文档中提取文字内容，请确保文档不是空的，或者尝试将其另存为 PDF 后上传。');
+              return;
+            }
+
+            // Convert extracted text to a text data URL so it fits the existing flow
+            const base64Text = btoa(unescape(encodeURIComponent(text)));
+            const dataUrl = `data:text/plain;base64,${base64Text}`;
+            onChange(dataUrl, file.name);
+          } catch (err) {
+            console.error('Docx extraction error:', err);
+            alert('读取 Word 文档失败，请尝试将其另存为 PDF 后上传。');
+          } finally {
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        onChange(reader.result as string);
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          onChange(event.target.result as string, file.name);
+        }
+        // Reset input so the same file can be selected again
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       };
       reader.readAsDataURL(file);
     }

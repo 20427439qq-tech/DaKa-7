@@ -111,12 +111,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
+  // Track bootstrap attempts to prevent infinite loops on quota errors
+  const hasAttemptedUsersBootstrap = React.useRef(false);
+  const hasAttemptedTasksBootstrap = React.useRef(false);
+
   // Listen for users collection changes when auth is ready
   useEffect(() => {
     if (!isAuthReady) return;
 
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), async (snapshot) => {
-      if (snapshot.empty) {
+      if (snapshot.empty && !hasAttemptedUsersBootstrap.current) {
+        hasAttemptedUsersBootstrap.current = true;
         // Bootstrap mock users
         try {
           const { MOCK_USERS } = await import('../data/mockData');
@@ -129,7 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
           handleFirestoreError(error, OperationType.WRITE, 'users');
         }
-      } else {
+      } else if (!snapshot.empty) {
         const usersList = snapshot.docs.map(doc => doc.data() as User);
         setUsers(usersList);
       }
@@ -147,7 +152,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!isAuthReady) return;
 
     const unsubscribeTasks = onSnapshot(collection(db, 'tasks'), async (snapshot) => {
-      if (snapshot.empty) {
+      if (snapshot.empty && !hasAttemptedTasksBootstrap.current) {
+        hasAttemptedTasksBootstrap.current = true;
         try {
           const { INITIAL_TASKS } = await import('../data/mockData');
           for (const task of INITIAL_TASKS) {
@@ -156,7 +162,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
           handleFirestoreError(error, OperationType.WRITE, 'tasks');
         }
-      } else {
+      } else if (!snapshot.empty) {
         const tasksList = snapshot.docs.map(doc => doc.data() as CheckinTask);
         setTasks(tasksList.sort((a, b) => a.order - b.order));
       }

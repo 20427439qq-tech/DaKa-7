@@ -51,9 +51,22 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const errorMessage = JSON.stringify(errInfo);
   console.error('Firestore Error: ', errorMessage);
   
-  // Only throw if it's a permission error or similar critical error
-  if (errInfo.error.includes('permission') || errInfo.error.includes('Missing or insufficient permissions')) {
+  // Only throw if it's a permission error. We don't throw on quota errors 
+  // because it causes unhandled promise rejections and the Firebase SDK 
+  // already handles retries/backoff internally.
+  if (
+    errInfo.error.includes('permission') || 
+    errInfo.error.includes('Missing or insufficient permissions')
+  ) {
     throw new Error(errorMessage);
+  }
+  
+  // For quota errors, we just log and return so the app doesn't crash
+  if (
+    errInfo.error.includes('resource-exhausted') ||
+    errInfo.error.includes('Quota exceeded')
+  ) {
+    console.warn("Firebase Quota Exceeded. The app will sync data when quota is restored.");
   }
   
   return errInfo;

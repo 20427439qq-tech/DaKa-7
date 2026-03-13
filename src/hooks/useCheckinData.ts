@@ -1,6 +1,6 @@
 import { DailyCheckin, User, CheckinTask } from '../types';
 import { calculateCheckinStats } from '../data/mockData';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { getBeijingTime } from '../lib/utils';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -45,9 +45,19 @@ export function useCheckinData() {
     return checkins.find(c => c.userId === userId && c.date === date);
   };
 
+  const lastSavedRef = useRef<string>('');
+
   const saveCheckin = async (checkin: DailyCheckin) => {
     const updatedCheckin = calculateCheckinStats(checkin, tasks);
     const checkinId = `${updatedCheckin.userId}-${updatedCheckin.date}`;
+    
+    // Simple deduplication to save quota
+    const currentDataStr = JSON.stringify(updatedCheckin);
+    if (lastSavedRef.current === currentDataStr) return;
+    
+    // Update ref before the network call to prevent infinite retry loops on quota errors
+    lastSavedRef.current = currentDataStr;
+    
     try {
       await setDoc(doc(db, 'checkins', checkinId), { ...updatedCheckin, id: checkinId });
     } catch (error) {
@@ -56,7 +66,7 @@ export function useCheckinData() {
   };
 
   const getDailyDonation = (date: string, members: User[]) => {
-    const teamMembers = members.filter(m => m.id !== 'admin');
+    const teamMembers = members.filter(m => m.id !== 'admin' && m.studentId && m.studentId >= 1 && m.studentId <= 12);
     const teamMemberIds = new Set(teamMembers.map(m => m.id));
     const dayCheckins = checkins.filter(c => c.date === date && teamMemberIds.has(c.userId));
     
@@ -79,7 +89,7 @@ export function useCheckinData() {
   };
 
   const getDonationHistory = (members: User[]) => {
-    const teamMembers = members.filter(m => m.id !== 'admin');
+    const teamMembers = members.filter(m => m.id !== 'admin' && m.studentId && m.studentId >= 1 && m.studentId <= 12);
     const dates = Array.from(new Set(checkins.map(c => c.date))).sort((a, b) => (b as string).localeCompare(a as string)) as string[];
     
     return dates.map(date => {
@@ -142,7 +152,7 @@ export function useCheckinData() {
   };
 
   const getTeamStats = (date: string, members: User[]) => {
-    const teamMembers = members.filter(m => m.id !== 'admin');
+    const teamMembers = members.filter(m => m.id !== 'admin' && m.studentId && m.studentId >= 1 && m.studentId <= 12);
     const teamMemberIds = new Set(teamMembers.map(m => m.id));
     const dayCheckins = checkins.filter(c => c.date === date && teamMemberIds.has(c.userId));
     

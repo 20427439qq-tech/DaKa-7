@@ -4,15 +4,18 @@ import { useAuth } from '../hooks/useAuth';
 import { useCheckinData } from '../hooks/useCheckinData';
 import { Header } from '../components/layout/Header';
 import { TaskCard } from '../components/checkin/TaskCard';
+import { HomeworkQualityCard } from '../components/checkin/HomeworkQualityCard';
 import { DonationSummary } from '../components/checkin/DonationSummary';
 import { TeammateStatus } from '../components/checkin/TeammateStatus';
 import { TeammateDetailModal } from '../components/checkin/TeammateDetailModal';
 import { DailyCheckin, User } from '../types';
 import { calculateCheckinStats } from '../data/mockData';
+import { analyzeHomework } from '../services/aiService';
 import { Icons, getRandomQuote, formatDate, formatCurrency, getBeijingTime, COUNTRY_TIMEZONES, getTimeForCountry } from '../lib/utils';
 
 export const MyCheckinPage: React.FC = () => {
   const { user, users, tasks, logout } = useAuth();
+  const filteredTasks = useMemo(() => tasks.filter(t => t.title !== '挑战记录'), [tasks]);
   const { getCheckin, saveCheckin, checkins, cheerTeammate, loading } = useCheckinData();
   const [quote] = useState(getRandomQuote());
   
@@ -22,8 +25,8 @@ export const MyCheckinPage: React.FC = () => {
   }, []);
   
   const completedTodayCount = useMemo(() => {
-    return checkins.filter(c => c.date === today && c.completedCount === tasks.length).length;
-  }, [checkins, today, tasks]);
+    return checkins.filter(c => c.date === today && c.completedCount === filteredTasks.length).length;
+  }, [checkins, today, filteredTasks]);
 
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<string>('中国');
@@ -45,14 +48,14 @@ export const MyCheckinPage: React.FC = () => {
           challengeNote: '',
           completedCount: 0,
           completionRate: 0,
-          donationAmount: tasks.length * 1000,
+          donationAmount: filteredTasks.length * 1000,
           updatedAt: new Date().toISOString(),
           country: '中国',
           cheers: []
-        }, tasks));
+        }, filteredTasks));
       }
     }
-  }, [loading, checkin, getCheckin, user, today, tasks]);
+  }, [loading, checkin, getCheckin, user, today, filteredTasks]);
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('保存成功，继续加油！');
@@ -61,12 +64,14 @@ export const MyCheckinPage: React.FC = () => {
 
   const [selectedTeammateId, setSelectedTeammateId] = useState<string | null>(null);
   const [showTeammateModal, setShowTeammateModal] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const teammates = useMemo(() => {
+    // Filter out admin and ensure we only show the 12 standard members
     return users
-      .filter(u => (u.roles || []).includes('member') && u.id !== user?.id)
+      .filter(u => (u.roles || []).includes('member') && u.id !== 'admin' && u.studentId && u.studentId >= 1 && u.studentId <= 12)
       .sort((a, b) => (a.studentId || 0) - (b.studentId || 0));
-  }, [user, users]);
+  }, [users]);
 
   const selectedTeammate = useMemo(() => {
     return users.find(u => u.id === selectedTeammateId) || null;
@@ -82,13 +87,55 @@ export const MyCheckinPage: React.FC = () => {
     setShowTeammateModal(true);
   };
 
-  const handleTaskChange = (taskId: string, value: any) => {
+  const handleTaskChange = async (taskId: string, value: any, fileName?: string) => {
+    let newValue = value;
+    
     setCheckin(prev => {
       if (!prev) return null;
-      const newTaskValues = { ...(prev.taskValues || {}), [taskId]: value };
+      const newTaskValues = { ...(prev.taskValues || {}), [taskId]: newValue };
       const next = { ...prev, taskValues: newTaskValues };
-      return calculateCheckinStats(next, tasks);
+      return calculateCheckinStats(next, filteredTasks);
     });
+
+    // Trigger AI analysis for Homework (t7)
+    if (taskId === 't7' && newValue) {
+      // Show success toast for upload
+      setToastMessage('文档上传成功！AI 开始质量分析...');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
+
+      // Clear previous analysis immediately to show loading state
+      setCheckin(prev => {
+        if (!prev) return null;
+        return { ...prev, homeworkAnalysis: undefined };
+      });
+      
+      setIsAnalyzing(true);
+      // Use a separate async block to not block the main UI thread
+      (async () => {
+        try {
+          console.log("Triggering AI analysis for t7 with filename:", fileName);
+          const analysis = await analyzeHomework(newValue, fileName);
+          console.log("AI analysis received:", analysis);
+          
+          setCheckin(prev => {
+            if (!prev) return null;
+            // Only update if the current task value matches the one we analyzed
+            if (prev.taskValues?.['t7'] === newValue) {
+              return { ...prev, homeworkAnalysis: analysis };
+            }
+            return prev;
+          });
+        } catch (error) {
+          console.error("AI Analysis failed:", error);
+          setToastMessage('AI 分析遇到一点小问题，请稍后重试');
+          setShowToast(true);
+          setTimeout(() => setShowToast(false), 3000);
+        } finally {
+          setIsAnalyzing(false);
+        }
+      })();
+    }
   };
 
   const handleSave = () => {
@@ -125,12 +172,12 @@ export const MyCheckinPage: React.FC = () => {
     if (!checkin) return null;
     const now = getTimeForCountry(checkin.country || '中国');
     const isBefore10PM = now.getHours() < 22;
-    const isAllCompleted = checkin.completedCount === tasks.length;
+    const isAllCompleted = checkin.completedCount === filteredTasks.length;
     
     if (isBefore10PM && isAllCompleted) {
       const uncompletedTeammates = teammates.filter(t => {
         const tCheckin = getCheckin(t.id, today);
-        return !tCheckin || tCheckin.completedCount < tasks.length;
+        return !tCheckin || tCheckin.completedCount < filteredTasks.length;
       });
 
       return (
@@ -178,7 +225,7 @@ export const MyCheckinPage: React.FC = () => {
       const diff = target.getTime() - now.getTime();
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const remainingTasks = tasks.length - checkin.completedCount;
+      const remainingTasks = filteredTasks.length - checkin.completedCount;
       
       return (
         <>
@@ -225,14 +272,14 @@ export const MyCheckinPage: React.FC = () => {
         </div>
       </>
     );
-  }, [checkin, completedTodayCount, submitTime, tasks, teammates]);
+  }, [checkin, completedTodayCount, submitTime, filteredTasks, teammates]);
 
   // Auto-save on change
   useEffect(() => {
     if (!checkin) return;
     const timer = setTimeout(() => {
       saveCheckin(checkin);
-    }, 1000);
+    }, 10000); // Increased to 10s to conserve Firestore quota
     return () => clearTimeout(timer);
   }, [checkin, saveCheckin]);
 
@@ -261,7 +308,7 @@ export const MyCheckinPage: React.FC = () => {
             </div>
             <div className="flex items-center gap-4">
               <h2 className="text-3xl font-black text-gray-900">
-                你好，{user?.name} 👋
+                你好，{user?.studentId ? `${parseInt(user.studentId.toString())}号 ` : ''}{user?.name} 👋
               </h2>
               <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold flex items-center gap-1">
                 <Icons.Check size={12} />
@@ -286,34 +333,54 @@ export const MyCheckinPage: React.FC = () => {
             <p className="text-gray-500 mt-2 italic">“{quote}”</p>
           </div>
           
-          <button 
-            onClick={() => window.location.hash = '#password'}
-            className="text-xs text-blue-600 font-bold flex items-center gap-1 hover:underline"
-          >
-            <Icons.Info size={14} /> 修改密码
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => window.location.hash = '#best-homework'}
+              className="text-xs text-amber-600 font-bold flex items-center gap-1 hover:underline px-2 py-1 bg-amber-50 rounded-lg"
+            >
+              <Icons.Star size={14} fill="currentColor" /> 优秀作业
+            </button>
+            <button 
+              onClick={() => window.location.hash = '#password'}
+              className="text-xs text-blue-600 font-bold flex items-center gap-1 hover:underline"
+            >
+              <Icons.Info size={14} /> 修改密码
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
           <DonationSummary 
             amount={checkin.donationAmount} 
             completedCount={checkin.completedCount} 
-            totalCount={tasks.length}
+            totalCount={filteredTasks.length}
+            homeworkAnalysis={checkin.homeworkAnalysis}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tasks.length > 0 ? (
-              tasks.map(task => (
-                <div key={task.id} className={task.type === 'text' ? 'md:col-span-2' : ''}>
-                  <TaskCard
-                    title={task.title}
-                    description={task.description}
-                    type={task.type}
-                    deadline={task.deadline}
-                    value={checkin.taskValues?.[task.id]}
-                    onChange={(val) => handleTaskChange(task.id, val)}
-                  />
-                </div>
+            {filteredTasks.length > 0 ? (
+              filteredTasks.map(task => (
+                <React.Fragment key={task.id}>
+                  <div className={task.type === 'text' ? 'md:col-span-2' : ''}>
+                    <TaskCard
+                      title={task.title}
+                      description={task.description}
+                      type={task.type}
+                      deadline={task.deadline}
+                      value={checkin.taskValues?.[task.id]}
+                      onChange={(val) => handleTaskChange(task.id, val)}
+                      analysis={task.id === 't7' ? checkin.homeworkAnalysis : undefined}
+                    />
+                  </div>
+                  {task.id === 't7' && (
+                    <div className="md:col-span-1">
+                      <HomeworkQualityCard 
+                        analysis={checkin.homeworkAnalysis}
+                        isAnalyzing={isAnalyzing}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
               ))
             ) : (
               <div className="col-span-full py-12 bg-white rounded-2xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-400">
@@ -340,6 +407,7 @@ export const MyCheckinPage: React.FC = () => {
           <TeammateStatus 
             teammates={teammates}
             checkins={checkins}
+            tasksCount={filteredTasks.length}
             onTeammateClick={handleTeammateClick}
           />
         </div>

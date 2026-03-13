@@ -150,20 +150,6 @@ export const LoginPage: React.FC = () => {
             马上打卡
           </button>
 
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setName('王凡');
-                setPassword('2026');
-                setRole('member');
-              }}
-              className="text-xs text-emerald-600 hover:text-emerald-700 font-medium py-2 px-4 rounded-lg bg-emerald-50 transition-colors"
-            >
-              使用测试账号 (王凡/2026) 快速填入
-            </button>
-          </div>
-
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-100"></div>

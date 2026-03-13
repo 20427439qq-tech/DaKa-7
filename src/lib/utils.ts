@@ -1,4 +1,4 @@
-import { Check, X, AlertCircle, AlertTriangle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star, Plane, Heart, MessageCircle, Image, Mic, Type, Edit2 } from 'lucide-react';
+import { Check, X, AlertCircle, AlertTriangle, Info, Calendar, User, LogOut, TrendingUp, Award, DollarSign, ChevronRight, Search, Filter, Eye, EyeOff, Plus, RefreshCw, Edit, Trash2, PieChart, Circle, FileText, Users, Star, Plane, Heart, MessageCircle, Image, Mic, Type, Edit2, Zap, ArrowLeft, MessageSquare, Inbox } from 'lucide-react';
 
 export const Icons = {
   Check,
@@ -32,7 +32,11 @@ export const Icons = {
   Image,
   Mic,
   Type,
-  Edit2
+  Edit2,
+  Zap,
+  ArrowLeft,
+  MessageSquare,
+  Inbox
 };
 
 export const MOTIVATIONAL_QUOTES = [
